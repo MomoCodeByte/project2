@@ -6,6 +6,7 @@ import './screens/Componets/welcome_screen.dart';
 import './screens/Componets/RegistrationScreen.dart';
 import './screens/Clients/product_list.dart'; // new one here
 import './screens/Clients/Workers_Screen.dart';//new oner here
+import './screens/Clients/Workers_detail.dart';//new one here
 import './screens/Clients/product_details.dart';
 import './screens/Farmer/dashboard.dart';
 import './screens/Admin/dashboard.dart';
@@ -35,9 +36,10 @@ class MyApp extends StatelessWidget {
         if (settings.name == '/details') {
           final args = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
-            builder: (context) => ProductDetailsScreen(
+            builder: (context) => ProductDetailScreen( // Corrected class name
               productName: args['productName'],
-              price: args['price'],
+              productIcon: Icons.image, // Replace with actual icon or image path
+              productPrice: args['productPrice'],
             ),
           );
         }

@@ -1,0 +1,225 @@
+mysql-workbench-community
+
+      household;
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(255),
+    password VARCHAR(255) NOT NULL,
+    role ENUM('customer', 'farmer', 'admin') NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE crops (
+    crop_id INT PRIMARY KEY AUTO_INCREMENT,
+    farmer_id INT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    availability BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (farmer_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE wokers (
+    worker_id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    availability BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
+
+
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT,
+    crop_id INT,
+    quantity INT NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
+    order_status ENUM('pending', 'processed', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES users(user_id),
+    FOREIGN KEY (crop_id) REFERENCES crops(crop_id)
+);
+
+
+CREATE TABLE booking (
+    booking_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT,
+    worker_id INT,
+    quantity INT NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
+    order_status ENUM('pending', 'processed', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES users(user_id),
+    FOREIGN KEY (worker_id) REFERENCES wokers(worker_id)
+);
+
+
+CREATE TABLE chat (
+    chat_id INT PRIMARY KEY AUTO_INCREMENT,
+    sender_id INT,
+    receiver_id INT,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(user_id),
+    FOREIGN KEY (receiver_id) REFERENCES users(user_id)
+);
+
+
+CREATE TABLE transactions (
+    transaction_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_type ENUM('purchase', 'refund', 'commission') NOT NULL,
+    status ENUM('pending', 'completed', 'failed') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE reports (
+    report_id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT,
+    report_type VARCHAR(255) NOT NULL,
+    content TEXT,
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
+
+
+CREATE TABLE settings (
+    setting_id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT,
+    setting_name VARCHAR(255) NOT NULL,
+    setting_value VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
+
+
+#  LIST OF API IN CHEKELENI APP
+
+
+
+#### another Work ###########################################
+
+
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(255),
+    password VARCHAR(255) NOT NULL,
+    role ENUM('customer', 'saller', 'admin') NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE product (
+    crop_id INT PRIMARY KEY AUTO_INCREMENT,
+    seller_id INT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    availability BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (seller_id) REFERENCES users(user_id)
+);
+
+
+CREATE TABLE workers (
+    crop_id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    availability BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT,
+    crop_id INT,
+    quantity INT NOT NULL,
+    total_price DECIMAL(10, 2) NOT NULL,
+    order_status ENUM('pending', 'processed', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES users(user_id),
+    FOREIGN KEY (crop_id) REFERENCES crops(crop_id)
+);
+
+
+CREATE TABLE chat (
+    chat_id INT PRIMARY KEY AUTO_INCREMENT,
+    sender_id INT,
+    receiver_id INT,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(user_id),
+    FOREIGN KEY (receiver_id) REFERENCES users(user_id)
+);
+
+
+************************************************
+CREATE TABLE transactions (
+    transaction_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_type ENUM('purchase', 'refund', 'commission') NOT NULL,
+    status ENUM('pending', 'completed', 'failed') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+***********************************************
+
+CREATE TABLE reports (
+    report_id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT,
+    report_type VARCHAR(255) NOT NULL,
+    content TEXT,
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
+
+
+CREATE TABLE settings (
+    setting_id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT,
+    setting_name VARCHAR(255) NOT NULL,
+    setting_value VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
+
+
+api
+http://localhost:3000/api/transactions  =>create transactions
+http://localhost:3000/api/transactions  => get all transactions
+ http://localhost:3000/api/transactions/1 => get transactions by id
+ http://localhost:3000/api/transactions/1 => update transactions
+ http://localhost:3000/api/transactions/1 => delete transactions
+
+ http://localhost:3000/api/settings  =>create settings
+http://localhost:3000/api/settings  => get all settings
+ http://localhost:3000/api/settings/1 => get settings by id
+ http://localhost:3000/api/settings/1 => update settings
+ http://localhost:3000/api/settings/1 => delete settings
+
+ reports
+
+ http://localhost:3000/api/ reports  =>create  reports
+http://localhost:3000/api/ reports  => get all  reports
+ http://localhost:3000/api/reports/1 => get  reports by id
+ http://localhost:3000/api/reports/1 => update  reports
+ http://localhost:3000/api/reports/1 => delete  reports
+
+ chat
+
+ http://localhost:3000/api/chat  =>create  chat 
+ http://localhost:3000/api/chat  => get all  chat
+ http://localhost:3000/api/chat/1 => get  chat by id
+ http://localhost:3000/api/chat/1 => update  chat
+ http://localhost:3000/api/chat/1 => delete  chat

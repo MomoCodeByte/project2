@@ -14,76 +14,53 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscureText = true;
-  bool _isLoading = false; // Track loading state
+  bool _isLoading = false;
 
-  
   // Function to handle API login
   Future<void> _login() async {
-    // Validate form fields first
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() {
-      _isLoading = true; // Show loading indicator
+      _isLoading = true;
     });
 
     try {
-      // Prepare request data matching server expectations
       final loginData = {
         'email': _emailController.text,
         'password': _passwordController.text,
       };
 
-      // Make the API call to login endpoint
       final response = await http.post(
-        Uri.parse('http://localhost:3000/api/users/login'),
+        Uri.parse('http://localhost:3000/api/users/login'), // API URL
         headers: {'Content-Type': 'application/json'},
         body: json.encode(loginData),
       );
 
-      // Handle the response
       if (response.statusCode == 200) {
-        // Successful login - parse the response
         final responseData = json.decode(response.body);
         final token = responseData['token'];
 
-           // Store the token securely
         final _storage = FlutterSecureStorage();
-        await _storage.write(key: 'jwt_token', value: token);       
-        
-        if (token != null) {
-            print('Stored token: $token');
-              // Print token for debugging
-        print('Login successful! Token: $token');
-        print(_storage);
-          } else {
-            print('No token found in storage.');
-          }
-      
+        await _storage.write(key: 'jwt_token', value: token);
 
-  
-      
-        // Extract the payload from JWT token to get the role
-        // The token has format: header.payload.signature
+        if (token != null) {
+          print('Login successful! Token: $token');
+        }
+
         final parts = token.split('.');
         if (parts.length != 3) {
           throw Exception('Invalid token format');
         }
 
-        // Decode the base64 payload
         String payload = parts[1];
-        // Add padding if needed
         payload = base64.normalize(payload);
         final decodedPayload = utf8.decode(base64.decode(payload));
         final payloadMap = json.decode(decodedPayload);
-
-        // Extract the role
         final userRole = payloadMap['role'] as String;
         print('User role from token: $userRole');
 
-        // Navigate based on role from server
-        // Inside your login function, replace this switch statement:
         switch (userRole.toLowerCase()) {
           case 'admin':
             Navigator.pushReplacementNamed(context, '/admin');
@@ -97,34 +74,29 @@ class _LoginScreenState extends State<LoginScreen> {
             break;
         }
       } else {
-        // Handle error responses
         String errorMessage = 'Login failed';
-
-        // Try to extract error message from response
         try {
           errorMessage = response.body;
         } catch (e) {
           errorMessage = 'Login failed (${response.statusCode})';
         }
 
-        // Show error message to user
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(errorMessage)));
-    }
+      }
     } catch (error) {
-      // Handle connection errors
       print('Error during login: $error');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Connection error. Please try again later.')),
       );
     } finally {
-      // Always hide loading indicator when done
       setState(() {
         _isLoading = false;
       });
+    }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -132,8 +104,8 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFF66BB6A), // Light green
-              Color(0xFF2E7D32), // Dark green
+              Colors.teal, // Light green
+              Colors.teal, // Dark green
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -160,28 +132,28 @@ class _LoginScreenState extends State<LoginScreen> {
                           Align(
                             alignment: Alignment.topLeft,
                             child: IconButton(
-                              icon: Icon(Icons.arrow_back, color: Color(0xFF43A047)),
+                              icon: Icon(Icons.arrow_back, color: Colors.teal),
                               onPressed: () => Navigator.pop(context),
                             ),
                           ),
-                          
+
                           // Logo and Title
                           CircleAvatar(
                             radius: 40,
                             backgroundColor: Color(0xFFE8F5E9),
                             child: Icon(
-                              Icons.eco,
+                              Icons.home_work_rounded,
                               size: 50,
-                              color: Color(0xFF43A047),
+                              color: Colors.teal,
                             ),
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Welcome to Agrify',
+                            'Welcome to Houselhold Services',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E7D32),
+                              color: Colors.teal,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -193,83 +165,53 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 32),
-                          
+
                           // Email Field
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: TextFormField(
-                              controller: _emailController,
-                              decoration: InputDecoration(
-                                labelText: 'Email',
-                                labelStyle: TextStyle(color: Color(0xFF43A047)),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                                prefixIcon: Icon(
-                                  Icons.email_outlined,
-                                  color: Color(0xFF43A047),
-                                ),
-                              ),
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                // Add email format validation
-                                if (!RegExp(
-                                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                                ).hasMatch(value)) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
-                            ),
+                          _buildTextField(
+                            controller: _emailController,
+                            label: 'Email',
+                            icon: Icons.email_outlined,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email';
+                              }
+                              if (!RegExp(
+                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                              ).hasMatch(value)) {
+                                return 'Please enter a valid email';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Password Field
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: TextFormField(
-                              controller: _passwordController,
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                labelStyle: TextStyle(color: Color(0xFF43A047)),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                                prefixIcon: Icon(
-                                  Icons.lock_outline,
-                                  color: Color(0xFF43A047),
-                                ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscureText
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    color: Color(0xFF43A047),
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscureText = !_obscureText;
-                                    });
-                                  },
-                                ),
+                          _buildTextField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            icon: Icons.lock_outline,
+                            obscureText: _obscureText,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureText
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.teal,
                               ),
-                              obscureText: _obscureText,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
-                                }
-                                return null;
+                              onPressed: () {
+                                setState(() {
+                                  _obscureText = !_obscureText;
+                                });
                               },
                             ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your password';
+                              }
+                              return null;
+                            },
                           ),
-                          
+
                           // Remember Me & Forgot Password
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -284,9 +226,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                       child: Checkbox(
                                         value: true,
                                         onChanged: (value) {},
-                                        activeColor: Color(0xFF43A047),
+                                        activeColor: Colors.teal,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -298,65 +242,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                   onPressed: () {},
                                   child: Text(
                                     'Forgot Password?',
-                                    style: TextStyle(
-                                      color: Color(0xFF43A047),
-                                    ),
+                                    style: TextStyle(color: Colors.teal),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          
+
                           // Login Button
                           SizedBox(height: 16),
-                          Container(
-                            width: double.infinity,
-                            height: 55,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF43A047),
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: Colors.grey.shade400,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 3,
-                              ),
-                              child:
-                                  _isLoading
-                                      ? CircularProgressIndicator(
-                                        color: Colors.white,
-                                      )
-                                      : Text(
-                                        'LOGIN',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 1.2,
-                                        ),
-                                      ),
-                            ),
+                          _buildButton(
+                            'LOGIN',
+                            _isLoading
+                                ? CircularProgressIndicator(color: Colors.white)
+                                : null,
+                            _login,
                           ),
-                          
-                          // Social Logins
-                          SizedBox(height: 24),
-                          Text(
-                            'Or login with',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _buildSocialButton(Icons.facebook, Colors.blue),
-                              SizedBox(width: 16),
-                              _buildSocialButton(Icons.g_mobiledata, Colors.red),
-                              SizedBox(width: 16),
-                              _buildSocialButton(Icons.apple, Colors.black),
-                            ],
-                          ),
-                          
+
                           // Register Link
                           SizedBox(height: 24),
                           Row(
@@ -368,14 +270,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => RegistrationScreen(),
+                                      builder:
+                                          (context) => RegistrationScreen(),
                                     ),
                                   );
                                 },
                                 child: Text(
                                   'Register',
                                   style: TextStyle(
-                                    color: Color(0xFF43A047),
+                                    color: Colors.teal,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -394,30 +297,62 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-  
-  Widget _buildSocialButton(IconData icon, Color color) {
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
     return Container(
-      width: 50,
-      height: 50,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: Offset(0, 1),
-          ),
-        ],
       ),
-      child: Icon(
-        icon,
-        color: color,
-        size: 30,
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.teal),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16),
+          prefixIcon: Icon(icon, color: Colors.teal),
+          suffixIcon: suffixIcon,
+        ),
+        obscureText: obscureText,
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildButton(String text, Widget? icon, VoidCallback onPressed) {
+    return Container(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: Colors.grey.shade400,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 3,
+        ),
+        child:
+            icon ??
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
       ),
     );
   }
 }
-

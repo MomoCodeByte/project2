@@ -1,327 +1,509 @@
 import 'package:flutter/material.dart';
-import '../Componets/Login_screen.dart';
-import '../Componets/chat_screen.dart';
 
-
-class ProductDetailsScreen extends StatelessWidget {
+class ProductDetailScreen extends StatefulWidget {
   final String productName;
-  final String price;
+  final IconData productIcon; // Replace with image path in a real app
+  final double productPrice;
+  
+  const ProductDetailScreen({
+    Key? key, 
+    required this.productName, 
+    required this.productIcon, 
+    required this.productPrice,
+  }) : super(key: key);
 
-  ProductDetailsScreen({required this.productName, required this.price});
+  @override
+  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+}
+
+class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  int quantity = 1;
+  bool isFavorite = false;
+  bool isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
-    // Get emoji for product
-    String productEmoji = _getProductEmoji(productName);
-
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        title: const Text('Product Details'),
+        centerTitle: true,
+        backgroundColor: Colors.teal,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: Icon(Icons.favorite_border, color: Colors.white),
-            onPressed: () {},
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? Colors.red : Colors.white,
+            ),
+            onPressed: () {
+              setState(() {
+                isFavorite = !isFavorite;
+              });
+            },
           ),
-          IconButton(
-            icon: Icon(Icons.share, color: Colors.white),
-            onPressed: () {},
+          Stack(
+            alignment: Alignment.topRight,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+                onPressed: () {
+                  // Navigate to cart
+                },
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: const Text(
+                    '3',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Product Hero Image Section
-          Container(
-            height: MediaQuery.of(context).size.height * 0.35,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.green.shade700, Colors.green.shade500],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 0,
-                  offset: Offset(0, 5),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product Image
+            Container(
+              height: 300,
+              width: double.infinity,
+              color: Colors.grey[200],
+              child: Center(
+                child: Icon(
+                  widget.productIcon,
+                  size: 120,
+                  color: Colors.teal,
                 ),
-              ],
+              ),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(productEmoji, style: TextStyle(fontSize: 80)),
-                SizedBox(height: 16),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    productName,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Product Details Section
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(20),
+            
+            // Product Info
+            Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Price Card
-                  Container(
-                    margin: EdgeInsets.only(top: 10, bottom: 24),
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          spreadRadius: 0,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Bei ya Sasa",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              price,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.star,
-                                size: 18,
-                                color: Colors.amber.shade700,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                "Bidhaa Bora",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Product Features
-                  Text(
-                    "Maelezo ya Bidhaa",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-
-                  _buildFeatureRow(
-                    Icons.check_circle_outline,
-                    "Bidhaa za Asili",
-                  ),
-                  _buildFeatureRow(Icons.eco_outlined, "Kilimo Hai"),
-                  _buildFeatureRow(
-                    Icons.location_on_outlined,
-                    "Imetoka ${_getProductOrigin(productName)}",
-                  ),
-                  _buildFeatureRow(
-                    Icons.calendar_today_outlined,
-                    "Msimu: ${_getProductSeason(productName)}",
-                  ),
-
-                  SizedBox(height: 30),
-
-                  // Call to Action Section
-                  Text(
-                    "Tafadhali chagua hatua inayofuata:",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-
-                  // Purchase Actions - TWO BUTTONS SIDE BY SIDE
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Buy Now Button
                       Expanded(
-                        child: _buildActionButton(
-                          context,
-                          "Nunua Sasa",
-                          Colors.green.shade700,
-                          Icons.shopping_bag_outlined,
-                          () {
-                            // Navigate to checkout page
-                           
-                           Navigator.push(
-                           context,
-                            MaterialPageRoute(builder: (context) => LoginScreen()),
-                           );
-                   
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Kuendelea na malipo..."),
-                                backgroundColor: Colors.green.shade700,
-                              ),
-                            );
-                          },
+                        child: Text(
+                          widget.productName,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      SizedBox(width: 12),
-                      // Add to Cart Button
-                      Expanded(
-                        child: _buildActionButton(
-                          context,
-                          "Weka Kwa Kikapu",
-                          Colors.green.shade700,
-                          Icons.shopping_cart_outlined,
-                          () {
-                            // Add to cart functionality
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Bidhaa imeongezwa kwenye kikapu"),
-                                backgroundColor: Colors.green.shade700,
-                              ),
-                            );
-                          },
+                      Text(
+                        '\$${widget.productPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 10),
+                  
+                  // Rating
+                  Row(
+                    children: [
+                      Row(
+                        children: List.generate(5, (index) {
+                          return Icon(
+                            index < 4 ? Icons.star : Icons.star_half,
+                            color: Colors.amber,
+                            size: 20,
+                          );
+                        }),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '4.5 (120 reviews)',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Description
+                  const Text(
+                    'Description',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'This premium ${widget.productName.toLowerCase()} is perfect for all your household needs. Made with high-quality materials, it ensures durability and excellent performance. Easy to use and maintain.',
+                    style: TextStyle(
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                  ),
+                  AnimatedCrossFade(
+                    firstChild: Container(),
+                    secondChild: Text(
+                      '\nIt comes with a 1-year warranty and free customer support. The ergonomic design makes it comfortable to use for extended periods. Energy-efficient and environmentally friendly, this product is a must-have for modern homes. Compatible with all standard accessories available in the market.',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        height: 1.5,
+                      ),
+                    ),
+                    crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                    duration: const Duration(milliseconds: 300),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        isExpanded = !isExpanded;
+                      });
+                    },
+                    child: Text(
+                      isExpanded ? 'Read less' : 'Read more',
+                      style: const TextStyle(
+                        color: Colors.teal,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Quantity selection
+                  Row(
+                    children: [
+                      const Text(
+                        'Quantity:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove),
+                              onPressed: () {
+                                if (quantity > 1) {
+                                  setState(() {
+                                    quantity--;
+                                  });
+                                }
+                              },
+                              constraints: const BoxConstraints(
+                                minWidth: 30,
+                                minHeight: 30,
+                              ),
+                              padding: EdgeInsets.zero,
+                              iconSize: 20,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                quantity.toString(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: () {
+                                setState(() {
+                                  quantity++;
+                                });
+                              },
+                              constraints: const BoxConstraints(
+                                minWidth: 30,
+                                minHeight: 30,
+                              ),
+                              padding: EdgeInsets.zero,
+                              iconSize: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+                  
+                  // Chat with seller button
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      _showChatDialog(context);
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: const Text('Chat with Seller'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.teal,
+                      side: const BorderSide(color: Colors.teal),
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      bottomNavigationBar: BottomAppBar(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Added ${quantity}x ${widget.productName} to cart'),
+                        backgroundColor: Colors.teal,
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.teal,
+                    side: const BorderSide(color: Colors.teal),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  child: const Text('Add to Cart'),
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Navigate to checkout
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  child: const Text('Buy Now'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  void _showChatDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollController) {
+            return Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                      ),
+                    ],
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        height: 40,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.storefront,
+                          color: Colors.teal,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Household Store',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              'Usually responds within 1 hour',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      _buildReceivedMessage(
+                        'Hello! How can I help you with our ${widget.productName}?',
+                        '10:30 AM',
+                      ),
+                      _buildSentMessage(
+                        'Hi, I have a question about the warranty.',
+                        '10:32 AM',
+                      ),
+                      _buildReceivedMessage(
+                        'Of course! This product comes with a standard 1-year warranty covering all manufacturing defects.',
+                        '10:34 AM',
+                      ),
+                      // Add more predefined message examples here
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.attach_file),
+                        color: Colors.grey,
+                        onPressed: () {},
+                      ),
+                      Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.teal,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.send),
+                          color: Colors.white,
+                          onPressed: () {},
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  Widget _buildSentMessage(String message, String time) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 15, left: 50),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+          color: Colors.teal.shade100,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(15),
+            topRight: Radius.circular(15),
+            bottomLeft: Radius.circular(15),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              spreadRadius: 0,
-              offset: Offset(0, -2),
-            ),
-          ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Call Button
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Phone call functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Kupiga simu kwa muuzaji..."),
-                      backgroundColor: Colors.green.shade700,
-                    ),
-                  );
-                },
-                icon: Icon(Icons.call_outlined),
-                label: Text(
-                  "Piga Simu",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-              ),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 16),
             ),
-            SizedBox(width: 16),
-            // Chat Button
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ChatScreen(chatUser: "Juma Wakulima")),
-                  );
-                },
-                icon: Icon(Icons.chat_outlined),
-                label: Text(
-                  "Anza Kubargain",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
+            const SizedBox(height: 5),
+            Text(
+              time,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade700,
               ),
             ),
           ],
@@ -329,93 +511,39 @@ class ProductDetailsScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildFeatureRow(IconData icon, String text) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.green.shade700),
-          SizedBox(width: 12),
-          Text(text, style: TextStyle(fontSize: 16, color: Colors.black87)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    BuildContext context,
-    String text,
-    Color color,
-    IconData icon,
-    VoidCallback onPressed,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.2),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: Offset(0, 4),
+  
+  Widget _buildReceivedMessage(String message, String time) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 15, right: 50),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(15),
+            topRight: Radius.circular(15),
+            bottomRight: Radius.circular(15),
           ),
-        ],
-      ),
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(
-          text,
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              time,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  // Helper methods to get product-specific information
-  String _getProductEmoji(String name) {
-    Map<String, String> emojiMap = {
-      "Mahindi": "🌽",
-      "Mpunga": "🌾",
-      "Maharage": "🫘",
-      "Viazi": "🥔",
-      "Ndizi": "🍌",
-    };
-
-    return emojiMap[name] ?? "🥬";
-  }
-
-  String _getProductOrigin(String name) {
-    Map<String, String> originMap = {
-      "Mahindi": "Mbeya",
-      "Mpunga": "Morogoro",
-      "Maharage": "Arusha",
-      "Viazi": "Iringa",
-      "Ndizi": "Kilimanjaro",
-    };
-
-    return originMap[name] ?? "Tanzania";
-  }
-
-  String _getProductSeason(String name) {
-    Map<String, String> seasonMap = {
-      "Mahindi": "Jan - Mar",
-      "Mpunga": "Mar - Jun",
-      "Maharage": "Apr - Jul",
-      "Viazi": "Year-round",
-      "Ndizi": "Year-round",
-    };
-
-    return seasonMap[name] ?? "Year-round";
   }
 }
