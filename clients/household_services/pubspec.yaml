@@ -47,8 +47,17 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   http: ^1.1.0
-  fl_chart: ^0.55.0 
+  fl_chart: ^0.64.0
+  image_picker: ^0.8.6
+  path_provider: ^2.0.11
+  path: ^1.8.2
+  shimmer: ^2.0.0
+  lottie: ^1.2.0
+  animate_do: ^2.1.0
+  flutter_animate: ^4.1.1
+  flutter_slidable: ^3.0.0
   shared_preferences: ^2.0.0
+  cached_network_image: ^3.2.3
   flutter_secure_storage: ^9.2.4
   flutter_vector_icons: ^2.0.0 # Replace with the latest version
 

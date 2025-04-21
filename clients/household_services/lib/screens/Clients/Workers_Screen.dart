@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../Componets/Login_screen.dart';
 
 class DomesticWorkersScreen extends StatelessWidget {
-  const DomesticWorkersScreen({Key? key}) : super(key: key);
+  const DomesticWorkersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +24,9 @@ class DomesticWorkersScreen extends StatelessWidget {
             padding: const EdgeInsets.only(right: 16),
             child: IconButton(
               onPressed: () {
-                // TODO: Implement login/logout logic
-              
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) =>  LoginScreen()),
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
                 );
               },
               icon: const Icon(Icons.login, color: Colors.white),
@@ -39,7 +37,7 @@ class DomesticWorkersScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Hero Section with Search and Filter
+            // Hero Section
             Container(
               padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
               decoration: const BoxDecoration(
@@ -62,7 +60,6 @@ class DomesticWorkersScreen extends StatelessWidget {
                   const SizedBox(height: 15),
                   Row(
                     children: [
-                      // Search Bar
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -74,7 +71,10 @@ class DomesticWorkersScreen extends StatelessWidget {
                             decoration: InputDecoration(
                               hintText: 'Search for services...',
                               hintStyle: TextStyle(color: Colors.grey[400]),
-                              prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: Colors.teal,
+                              ),
                               border: InputBorder.none,
                             ),
                             onChanged: (query) {
@@ -84,16 +84,18 @@ class DomesticWorkersScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Filter Button
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.filter_list, color: Colors.teal),
+                          icon: const Icon(
+                            Icons.filter_list,
+                            color: Colors.teal,
+                          ),
                           onPressed: () {
-                            // TODO: Show filter options or navigate to filter screen
+                            // TODO: Show filter options
                           },
                         ),
                       ),
@@ -111,10 +113,7 @@ class DomesticWorkersScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'Services',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
@@ -122,12 +121,18 @@ class DomesticWorkersScreen extends StatelessWidget {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _buildServiceCategory('Cleaning', Icons.cleaning_services),
+                        _buildServiceCategory(
+                          'Cleaning',
+                          Icons.cleaning_services,
+                        ),
                         _buildServiceCategory('Cooking', Icons.restaurant),
                         _buildServiceCategory('Childcare', Icons.child_care),
                         _buildServiceCategory('Gardening', Icons.yard),
                         _buildServiceCategory('Plumbing', Icons.plumbing),
-                        _buildServiceCategory('Electrical', Icons.electrical_services),
+                        _buildServiceCategory(
+                          'Electrical',
+                          Icons.electrical_services,
+                        ),
                       ],
                     ),
                   ),
@@ -142,7 +147,6 @@ class DomesticWorkersScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title and Filter Dropdown
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -176,14 +180,13 @@ class DomesticWorkersScreen extends StatelessWidget {
                             ),
                           ],
                           onChanged: (value) {
-                            // TODO: Call API to sort workers
+                            // TODO: Sort logic
                           },
                         ),
                       ],
                     ),
                     const SizedBox(height: 5),
 
-                    // Worker List
                     Expanded(
                       child: ListView(
                         children: [
@@ -192,7 +195,7 @@ class DomesticWorkersScreen extends StatelessWidget {
                             specialization: 'Cleaning Specialist',
                             rating: 4.9,
                             experience: 3,
-                            hourlyRate: 25,
+                            availabilityTime: '10AM - 6PM',
                             imagePath: 'assets/images/worker1.jpg',
                           ),
                           _buildWorkerCard(
@@ -200,7 +203,7 @@ class DomesticWorkersScreen extends StatelessWidget {
                             specialization: 'Professional Chef',
                             rating: 4.7,
                             experience: 5,
-                            hourlyRate: 40,
+                            availabilityTime: '9AM - 5PM',
                             imagePath: 'assets/images/worker2.jpg',
                           ),
                           _buildWorkerCard(
@@ -208,7 +211,7 @@ class DomesticWorkersScreen extends StatelessWidget {
                             specialization: 'Childcare Provider',
                             rating: 4.8,
                             experience: 4,
-                            hourlyRate: 30,
+                            availabilityTime: '11AM - 7PM',
                             imagePath: 'assets/images/worker3.jpg',
                           ),
                           _buildWorkerCard(
@@ -216,7 +219,7 @@ class DomesticWorkersScreen extends StatelessWidget {
                             specialization: 'Gardening Expert',
                             rating: 4.6,
                             experience: 7,
-                            hourlyRate: 35,
+                            availabilityTime: '8AM - 4PM',
                             imagePath: 'assets/images/worker4.jpg',
                           ),
                         ],
@@ -230,38 +233,28 @@ class DomesticWorkersScreen extends StatelessWidget {
         ),
       ),
 
-      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.teal,
         unselectedItemColor: Colors.grey,
         currentIndex: 0,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
-          // TODO: Handle bottom navigation taps
+          // TODO: Handle bottom navigation
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(
             icon: Icon(Icons.bookmark),
             label: 'Bookings',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
   }
 
-  // Build service category card
+  // Build service category
   Widget _buildServiceCategory(String title, IconData icon) {
     return Container(
       width: 80,
@@ -300,7 +293,7 @@ class DomesticWorkersScreen extends StatelessWidget {
     required String specialization,
     required double rating,
     required int experience,
-    required int hourlyRate,
+    required String availabilityTime, // <--- Now a String!
     required String imagePath,
   }) {
     return Container(
@@ -319,7 +312,7 @@ class DomesticWorkersScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Worker Image
+          // Image
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.asset(
@@ -327,21 +320,25 @@ class DomesticWorkersScreen extends StatelessWidget {
               height: 70,
               width: 70,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, size: 35, color: Colors.grey),
+              errorBuilder:
+                  (context, error, stackTrace) =>
+                      const Icon(Icons.person, size: 35, color: Colors.grey),
             ),
           ),
           const SizedBox(width: 12),
 
-          // Worker Info
+          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    )),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(specialization, style: TextStyle(color: Colors.grey[600])),
                 const SizedBox(height: 6),
@@ -349,30 +346,45 @@ class DomesticWorkersScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.star, size: 16, color: Colors.amber[600]),
                     const SizedBox(width: 3),
-                    Text('$rating', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    Text(
+                      '$rating',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
                     const SizedBox(width: 10),
                     Icon(Icons.work, size: 16, color: Colors.teal[600]),
                     const SizedBox(width: 3),
-                    Text('$experience yrs', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    Text(
+                      '$experience yrs',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
 
-          // Rate and Book
+          // Availability
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('\$$hourlyRate/hr', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal[700])),
+              Text(
+                availabilityTime,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.teal[700],
+                ),
+              ),
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: () {
-                  // TODO: Implement booking logic
+                  // TODO: Booking
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),

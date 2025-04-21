@@ -32,7 +32,7 @@ class PlantIcon extends StatelessWidget {
   final double size;
   final Color color;
 
-  const PlantIcon({Key? key, required this.size, required this.color}) : super(key: key);
+  const PlantIcon({super.key, required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +46,7 @@ class PlantIcon extends StatelessWidget {
 }
 
 class HouseholdServiceApp extends StatelessWidget {
-  const HouseholdServiceApp({Key? key}) : super(key: key);
+  const HouseholdServiceApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +78,7 @@ class HouseholdServiceApp extends StatelessWidget {
 }
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({Key? key}) : super(key: key);
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +238,7 @@ class WelcomeScreen extends StatelessWidget {
 }
 
 class ServiceSelectionDropdown extends StatefulWidget {
-  const ServiceSelectionDropdown({Key? key}) : super(key: key);
+  const ServiceSelectionDropdown({super.key});
 
   @override
   ServiceSelectionDropdownState createState() => ServiceSelectionDropdownState();

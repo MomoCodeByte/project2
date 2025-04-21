@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../Componets/Login_screen.dart';
 
 class ProductCategoriesScreen extends StatelessWidget {
-  const ProductCategoriesScreen({Key? key}) : super(key: key);
+  const ProductCategoriesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

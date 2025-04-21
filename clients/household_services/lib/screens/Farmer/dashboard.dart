@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 // import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 
 class FarmerDashboard extends StatelessWidget {
+  const FarmerDashboard({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Farmer Dashboard'),
+        title: Text('Sellers  Dashboard'),
         backgroundColor: Color(0xFF43A047),
-
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Welcome to the Farmer Dashboard!',
+              'Welcome to the Sellers Dashboard!',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),

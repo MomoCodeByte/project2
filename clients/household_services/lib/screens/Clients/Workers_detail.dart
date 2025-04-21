@@ -1,712 +1,898 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+
+class Worker {
+  final int id;
+  final String name;
+  final String description;
+  final double price;
+  final int availability;
+  final String specialist;
+  final int age;
+  final String location;
+  final String phone;
+  final String workHour;
+  double rating; // Not in DB but shown in UI
+  int experience; // Not in DB but can be calculated or added
+
+  Worker({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.availability,
+    required this.specialist,
+    required this.age,
+    required this.location,
+    required this.phone,
+    required this.workHour,
+    this.rating = 0.0,
+    this.experience = 0,
+  });
+
+  factory Worker.fromJson(Map<String, dynamic> json) {
+    return Worker(
+      id: json['worker_id'],
+      name: json['name'],
+      description: json['description'] ?? '',
+      price: double.parse(json['price'].toString()),
+      availability: json['availability'] ?? 0,
+      specialist: json['specialist'] ?? '',
+      age: json['age'] ?? 0,
+      location: json['location'] ?? '',
+      phone: json['phone'] ?? '',
+      workHour: json['work_hour'] ?? '',
+      rating:
+          json['rating'] != null
+              ? double.parse(json['rating'].toString())
+              : 0.0,
+      experience: json['experience'] ?? 0,
+    );
+  }
+}
 
 class WorkerDetailScreen extends StatefulWidget {
-  final String workerName;
-  final String specialization;
-  final double rating;
-  final int experience;
-  final int hourlyRate;
-  final String imagePath;
-  
-  const WorkerDetailScreen({
-    Key? key,
-    required this.workerName,
-    required this.specialization,
-    required this.rating,
-    required this.experience,
-    required this.hourlyRate,
-    required this.imagePath,
-  }) : super(key: key);
+  final int? workerId;
+
+  const WorkerDetailScreen({Key? key, this.workerId}) : super(key: key);
 
   @override
-  State<WorkerDetailScreen> createState() => _WorkerDetailScreenState();
+  _WorkerDetailScreenState createState() => _WorkerDetailScreenState();
 }
 
 class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
-  final ScrollController _scrollController = ScrollController();
-  bool isFavorite = false;
-  DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
-  TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
-  int selectedDuration = 2;
+  List<Worker> workers = [];
+  List<Worker> filteredWorkers = [];
+  bool isLoading = true;
+  String searchQuery = '';
+  String selectedSpecialty = 'All';
+  List<String> specialties = [
+    'All',
+    'Cleaning',
+    'Cooking',
+    'Childcare',
+    'Gardening',
+    'Plumbing',
+    'Electrical',
+  ];
+  String sortBy = 'Top Rated';
+  List<String> sortOptions = [
+    'Top Rated',
+    'Price: Low to High',
+    'Price: High to Low',
+    'Experience',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchWorkers();
+  }
+
+  Future<void> fetchWorkers() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/api/workers'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+
+        setState(() {
+          workers =
+              data.map((worker) {
+                // Add mock rating and experience for UI purposes
+                final workerData = {...(worker as Map<String, dynamic>)};
+                workerData['rating'] =
+                    (3.5 +
+                        (worker['worker_id'] % 3) *
+                            0.5); // Random rating between 3.5-5.0
+                workerData['experience'] =
+                    1 +
+                    (worker['worker_id'] %
+                        10); // Random experience between 1-10 years
+                return Worker.fromJson(workerData);
+              }).toList();
+
+          // Initial filtering
+          applyFilters();
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load workers');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      showErrorSnackBar('Error fetching workers: $e');
+    }
+  }
+
+  void applyFilters() {
+    setState(() {
+      filteredWorkers =
+          workers.where((worker) {
+            // Apply search filter
+            final nameMatch = worker.name.toLowerCase().contains(
+              searchQuery.toLowerCase(),
+            );
+            final descriptionMatch = worker.description.toLowerCase().contains(
+              searchQuery.toLowerCase(),
+            );
+            final locationMatch = worker.location.toLowerCase().contains(
+              searchQuery.toLowerCase(),
+            );
+
+            // Apply specialty filter
+            final specialtyMatch =
+                selectedSpecialty == 'All' ||
+                worker.specialist.toLowerCase() ==
+                    selectedSpecialty.toLowerCase();
+
+            return (nameMatch || descriptionMatch || locationMatch) &&
+                specialtyMatch;
+          }).toList();
+
+      // Apply sorting
+      switch (sortBy) {
+        case 'Top Rated':
+          filteredWorkers.sort((a, b) => b.rating.compareTo(a.rating));
+          break;
+        case 'Price: Low to High':
+          filteredWorkers.sort((a, b) => a.price.compareTo(b.price));
+          break;
+        case 'Price: High to Low':
+          filteredWorkers.sort((a, b) => b.price.compareTo(a.price));
+          break;
+        case 'Experience':
+          filteredWorkers.sort((a, b) => b.experience.compareTo(a.experience));
+          break;
+      }
+    });
+  }
+
+  void showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        backgroundColor: Color(0xFF009688),
+        elevation: 0,
+        title: Text(
+          'Domestic Workers',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_outlined, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(Icons.logout, color: Colors.white),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Header Section
+          Container(
+            padding: EdgeInsets.all(16),
+            color: Color(0xFF009688),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Find Skilled Professionals',
+                  style: TextStyle(
+                    fontSize: 22,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'for Your Home',
+                  style: TextStyle(
+                    fontSize: 22,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 16),
+                // Search Box
+                TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value;
+                      applyFilters();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search for services...',
+                    prefixIcon: Icon(Icons.search, color: Colors.grey),
+                    suffixIcon: Icon(Icons.filter_list, color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(vertical: 0),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Specialties Section
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, bottom: 8),
+                  child: Text(
+                    'Services',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(
+                  height: 100,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount:
+                        specialties.length -
+                        1, // Skip "All" in the visual display
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    itemBuilder: (context, index) {
+                      final specialty =
+                          specialties[index +
+                              1]; // Skip "All" in the visual display
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedSpecialty = specialty;
+                            applyFilters();
+                          });
+                        },
+                        child: Container(
+                          width: 80,
+                          margin: EdgeInsets.symmetric(horizontal: 4),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color:
+                                      selectedSpecialty == specialty
+                                          ? Color(0xFF009688)
+                                          : Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Color(0xFF009688),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  _getIconForSpecialty(specialty),
+                                  color:
+                                      selectedSpecialty == specialty
+                                          ? Colors.white
+                                          : Color(0xFF009688),
+                                  size: 24,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                specialty,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight:
+                                      selectedSpecialty == specialty
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Available Workers Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Available Workers',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                DropdownButton<String>(
+                  value: sortBy,
+                  underline: SizedBox(),
+                  icon: Icon(Icons.keyboard_arrow_down),
+                  items:
+                      sortOptions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        sortBy = newValue;
+                        applyFilters();
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Workers List
+          Expanded(
+            child:
+                isLoading
+                    ? Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF009688),
+                      ),
+                    )
+                    : filteredWorkers.isEmpty
+                    ? Center(
+                      child: Text('No workers found matching your criteria'),
+                    )
+                    : ListView.builder(
+                      itemCount: filteredWorkers.length,
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      itemBuilder: (context, index) {
+                        final worker = filteredWorkers[index];
+                        return _buildWorkerCard(worker);
+                      },
+                    ),
+          ),
+
+          // Bottom Navigation
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildNavItem(Icons.home, 'Home', true),
+                _buildNavItem(Icons.search, 'Search', false),
+                _buildNavItem(Icons.calendar_today, 'Bookings', false),
+                _buildNavItem(Icons.person, 'Profile', false),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkerCard(Worker worker) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WorkerProfileScreen(worker: worker),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Profile Image
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.grey[300],
+                child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
+              ),
+              SizedBox(width: 16),
+              // Worker Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      worker.name,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      worker.specialist,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.star, color: Colors.amber, size: 18),
+                        SizedBox(width: 4),
+                        Text(
+                          worker.rating.toStringAsFixed(1),
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(width: 16),
+                        Icon(Icons.access_time, color: Colors.grey, size: 18),
+                        SizedBox(width: 4),
+                        Text('${worker.experience} yrs'),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      worker.description.isNotEmpty
+                          ? worker.description
+                          : 'Professional ${worker.specialist} with ${worker.experience} years of experience.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              // Price and Book Button
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '\$${worker.price.toStringAsFixed(0)}/hr',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Handle booking
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF009688),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                    child: Text('BOOK'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, bool isActive) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: isActive ? Color(0xFF009688) : Colors.grey, size: 24),
+        SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Color(0xFF009688) : Colors.grey,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  IconData _getIconForSpecialty(String specialty) {
+    switch (specialty.toLowerCase()) {
+      case 'cleaning':
+        return Icons.cleaning_services;
+      case 'cooking':
+        return Icons.restaurant;
+      case 'childcare':
+        return Icons.child_care;
+      case 'gardening':
+        return Icons.yard;
+      case 'plumbing':
+        return Icons.plumbing;
+      case 'electrical':
+        return Icons.electrical_services;
+      default:
+        return Icons.work;
+    }
+  }
+}
+
+// Worker Profile Screen for detailed view
+class WorkerProfileScreen extends StatelessWidget {
+  final Worker worker;
+
+  const WorkerProfileScreen({Key? key, required this.worker}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
-        controller: _scrollController,
         slivers: [
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: 200.0,
+            floating: false,
             pinned: true,
-            backgroundColor: Colors.indigo,
-            actions: [
-              IconButton(
-                icon: Icon(
-                  isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: isFavorite ? Colors.red : Colors.white,
-                ),
-                onPressed: () {
-                  setState(() {
-                    isFavorite = !isFavorite;
-                  });
-                },
-              ),
-            ],
+            backgroundColor: Color(0xFF009688),
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
+              title: Text(
+                worker.name,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.asset(
-                      widget.imagePath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.person,
-                          size: 120,
-                          color: Colors.grey.shade400,
-                        );
-                      },
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.7),
-                          ],
-                          stops: const [0.6, 1.0],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 20,
-                      left: 20,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.workerName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            widget.specialization,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              ),
+              background: Container(
+                color: Color(0xFF009688),
+                child: Center(
+                  child: Icon(
+                    _getIconForSpecialty(worker.specialist),
+                    size: 80,
+                    color: Colors.white.withOpacity(0.3),
+                  ),
                 ),
               ),
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Profile Header
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatCard(
-                        '\$${widget.hourlyRate}',
-                        'Per Hour',
-                        Icons.attach_money,
-                        Colors.green.shade100,
-                        Colors.green,
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.grey[300],
+                        child: Icon(
+                          Icons.person,
+                          size: 50,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                      _buildStatCard(
-                        widget.rating.toString(),
-                        'Rating',
-                        Icons.star,
-                        Colors.amber.shade100,
-                        Colors.amber,
-                      ),
-                      _buildStatCard(
-                        '${widget.experience} yrs',
-                        'Experience',
-                        Icons.work,
-                        Colors.blue.shade100,
-                        Colors.blue,
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              worker.specialist,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.star, color: Colors.amber, size: 18),
+                                SizedBox(width: 4),
+                                Text(
+                                  '${worker.rating.toStringAsFixed(1)} (${20 + worker.id * 3} reviews)',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  color: Colors.grey,
+                                  size: 18,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '${worker.experience} years experience',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
-                  const Text(
+
+                  SizedBox(height: 24),
+
+                  // Price and Availability
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'Hourly Rate',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '\$${worker.price.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Color(0xFF009688),
+                              ),
+                            ),
+                          ],
+                        ),
+                        VerticalDivider(
+                          thickness: 1,
+                          width: 40,
+                          color: Colors.grey[300],
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              'Availability',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              worker.availability == 1
+                                  ? 'Available'
+                                  : 'Unavailable',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color:
+                                    worker.availability == 1
+                                        ? Colors.green
+                                        : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        VerticalDivider(
+                          thickness: 1,
+                          width: 40,
+                          color: Colors.grey[300],
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              'Hours',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              worker.workHour.isNotEmpty
+                                  ? worker.workHour
+                                  : 'Flexible',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 24),
+
+                  // About
+                  Text(
                     'About',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 8),
                   Text(
-                    'A dedicated professional with ${widget.experience} years of experience in ${widget.specialization.toLowerCase()}. Known for attention to detail, reliability, and excellent customer service.',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      height: 1.5,
+                    worker.description.isNotEmpty
+                        ? worker.description
+                        : 'Professional ${worker.specialist} with ${worker.experience} years of experience. Dedicated to providing high-quality service with attention to detail. Available for both short-term and long-term assignments.',
+                    style: TextStyle(fontSize: 16, height: 1.5),
+                  ),
+
+                  SizedBox(height: 24),
+
+                  // Contact Information
+                  Text(
+                    'Contact Information',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 16),
+                  _buildContactItem(
+                    Icons.phone,
+                    'Phone',
+                    worker.phone.isNotEmpty
+                        ? worker.phone
+                        : '+1 (555) 123-4567',
+                  ),
+                  SizedBox(height: 12),
+                  _buildContactItem(
+                    Icons.location_on,
+                    'Location',
+                    worker.location.isNotEmpty
+                        ? worker.location
+                        : 'City Center',
+                  ),
+                  SizedBox(height: 12),
+                  _buildContactItem(
+                    Icons.calendar_today,
+                    'Age',
+                    '${worker.age} years old',
+                  ),
+
+                  SizedBox(height: 32),
+
+                  // Book Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Handle booking
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Booking request sent for ${worker.name}',
+                            ),
+                            backgroundColor: Color(0xFF009688),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF009688),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: Text(
+                        'BOOK NOW',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 30),
-                  const Text(
-                    'Services Offered',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  _buildServiceItem(
-                    'Regular Service',
-                    'Standard ${widget.specialization.toLowerCase()} service',
-                    widget.hourlyRate,
-                  ),
-                  const Divider(),
-                  _buildServiceItem(
-                    'Deep Service',
-                    'Thorough ${widget.specialization.toLowerCase()} with special attention',
-                    widget.hourlyRate + 10,
-                  ),
-                  const Divider(),
-                  _buildServiceItem(
-                    'Emergency Service',
-                    'Available on short notice within 2 hours',
-                    widget.hourlyRate + 20,
-                  ),
-                  const SizedBox(height: 30),
-                  _buildReviewsSection(),
-                  const SizedBox(height: 30),
-                  _buildBookingSection(),
                 ],
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomBar(),
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon, Color bgColor, Color iconColor) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: iconColor, size: 30),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              color: iconColor,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: iconColor.withOpacity(0.7),
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServiceItem(String title, String description, int price) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      subtitle: Text(description),
-      trailing: Text(
-        '\$$price/hr',
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.indigo,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReviewCard(String name, String review, double rating, String timeAgo) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Row(
-                children: [
-                  Text(
-                    rating.toString(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Icon(
-                    Icons.star,
-                    size: 16,
-                    color: Colors.amber,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            review,
-            style: TextStyle(
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            timeAgo,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildContactItem(IconData icon, String label, String value) {
+    return Row(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Container(
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Color(0xFF009688).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Color(0xFF009688)),
+        ),
+        SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Reviews',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+            Text(
+              label,
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
-            TextButton.icon(
-              icon: const Icon(Icons.star, size: 16),
-              label: Text('${widget.rating} (120)'),
-              onPressed: () {},
+            SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ],
-        ),
-        const SizedBox(height: 15),
-        _buildReviewCard(
-          'Jane Smith',
-          'Great service! Very professional and thorough.',
-          4.8,
-          '2 weeks ago',
-        ),
-        _buildReviewCard(
-          'Michael Brown',
-          'Arrived on time and did an excellent job. Will hire again.',
-          5.0,
-          '1 month ago',
-        ),
-        TextButton(
-          onPressed: () {},
-          child: const Text('See all reviews'),
         ),
       ],
     );
   }
 
-  Widget _buildBookingSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Book a Service',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 15),
-        _buildDateSelection(),
-        const SizedBox(height: 15),
-        _buildTimeSelection(),
-        const SizedBox(height: 15),
-        _buildDurationSelection(),
-        const SizedBox(height: 15),
-        _buildPriceCalculation(),
-        const SizedBox(height: 30),
-        _buildChatButton(),
-      ],
-    );
-  }
-
-  Widget _buildDateSelection() {
-    return GestureDetector(
-      onTap: () => _selectDate(context),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today, color: Colors.indigo),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Date',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  DateFormat('EEEE, MMM d, yyyy').format(selectedDate),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.grey,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimeSelection() {
-    return GestureDetector(
-      onTap: () => _selectTime(context),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.access_time, color: Colors.indigo),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Time',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  selectedTime.format(context),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.grey,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDurationSelection() {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Duration',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildDurationOption(1),
-              _buildDurationOption(2),
-              _buildDurationOption(3),
-              _buildDurationOption(4),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDurationOption(int hours) {
-    bool isSelected = selectedDuration == hours;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedDuration = hours;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.indigo : Colors.white,
-          border: Border.all(
-            color: isSelected ? Colors.indigo : Colors.grey.shade300,
-          ),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          '$hours hr${hours > 1 ? 's' : ''}',
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPriceCalculation() {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Service fee'),
-              Text('\$${(widget.hourlyRate * selectedDuration).toStringAsFixed(2)}'),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('Booking fee'),
-              Text('\$5.00'),
-            ],
-          ),
-          const Divider(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Total',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                '\$${(widget.hourlyRate * selectedDuration + 5).toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatButton() {
-    return OutlinedButton.icon(
-      onPressed: () => _showChatDialog(context),
-      icon: const Icon(Icons.chat_bubble_outline),
-      label: const Text('Chat with Worker'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.indigo,
-        side: const BorderSide(color: Colors.indigo),
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-        minimumSize: const Size(double.infinity, 50),
-      ),
-    );
-  }
-
-  Widget _buildBottomBar() {
-    return BottomAppBar(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: ElevatedButton(
-          onPressed: () => _showBookingConfirmation(context),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.indigo,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          child: const Text(
-            'Book Now',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
-    );
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-      });
+  IconData _getIconForSpecialty(String specialty) {
+    switch (specialty.toLowerCase()) {
+      case 'cleaning':
+        return Icons.cleaning_services;
+      case 'cooking':
+        return Icons.restaurant;
+      case 'childcare':
+        return Icons.child_care;
+      case 'gardening':
+        return Icons.yard;
+      case 'plumbing':
+        return Icons.plumbing;
+      case 'electrical':
+        return Icons.electrical_services;
+      default:
+        return Icons.work;
     }
-  }
-
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: selectedTime,
-    );
-    if (picked != null && picked != selectedTime) {
-      setState(() {
-        selectedTime = picked;
-      });
-    }
-  }
-
-  void _showChatDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Start Chat'),
-          content: const Text('Would you like to start a chat with this worker?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Implement chat functionality
-                Navigator.of(context).pop();
-              },
-              child: const Text('Start Chat'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showBookingConfirmation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Booking'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Worker: ${widget.workerName}'),
-              const SizedBox(height: 8),
-              Text('Date: ${DateFormat('MMM d, yyyy').format(selectedDate)}'),
-              Text('Time: ${selectedTime.format(context)}'),
-              Text('Duration: $selectedDuration hours'),
-              const SizedBox(height: 8),
-              Text(
-                'Total: \$${(widget.hourlyRate * selectedDuration + 5).toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Implement booking functionality
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Booking confirmed successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              child: const Text('Confirm Booking'),
-            ),
-          ],
-        );
-      },
-    );
   }
 }
