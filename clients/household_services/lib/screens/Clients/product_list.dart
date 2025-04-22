@@ -25,11 +25,11 @@ class ProductCategoriesScreen extends StatelessWidget {
             child: IconButton(
               onPressed: () {
                 // TODO: Handle user login/logout through API
-                 // TODO: Implement login/logout logic
-              
+                // TODO: Implement login/logout logic
+
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) =>  LoginScreen()),
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
                 );
               },
               icon: const Icon(Icons.login, color: Colors.white),
@@ -62,15 +62,15 @@ class ProductCategoriesScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                   const Text(
-  'Find the perfect products\nfor your home',
-  textAlign: TextAlign.center, // 👈 Add this line
-  style: TextStyle(
-    color: Colors.white,
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-  ),
-),
+                    const Text(
+                      'Find the perfect products\nfor your home',
+                      textAlign: TextAlign.center, // 👈 Add this line
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
 
                     const SizedBox(height: 20),
                     Container(
@@ -83,7 +83,10 @@ class ProductCategoriesScreen extends StatelessWidget {
                         decoration: InputDecoration(
                           hintText: 'Search for products...',
                           hintStyle: TextStyle(color: Colors.grey[400]),
-                          prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.teal,
+                          ),
                           border: InputBorder.none,
                         ),
                         onChanged: (query) {
@@ -113,7 +116,6 @@ class ProductCategoriesScreen extends StatelessWidget {
                     // TODO: Replace static GridView with FutureBuilder calling categories API
                     // You may fetch the categories like:
                     // Future<List<Category>> fetchCategories() => apiService.getCategories();
-
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -122,14 +124,50 @@ class ProductCategoriesScreen extends StatelessWidget {
                       crossAxisSpacing: 15,
                       mainAxisSpacing: 15,
                       children: [
-                        _buildCategoryCard(context, 'Cleaning Supplies', Icons.cleaning_services, Colors.blue.shade100, () {
-                          // TODO: Navigate with category ID to products page & fetch category-specific products
-                        }),
-                        _buildCategoryCard(context, 'Kitchen Appliances', Icons.blender, Colors.orange.shade100, () {}),
-                        _buildCategoryCard(context, 'Home Decor', Icons.chair, Colors.green.shade100, () {}),
-                        _buildCategoryCard(context, 'Bed & Bath', Icons.king_bed, Colors.purple.shade100, () {}),
-                        _buildCategoryCard(context, 'Laundry', Icons.local_laundry_service, Colors.pink.shade100, () {}),
-                        _buildCategoryCard(context, 'Smart Home', Icons.wifi, Colors.cyan.shade100, () {}),
+                        _buildCategoryCard(
+                          context,
+                          'Cleaning Supplies',
+                          Icons.cleaning_services,
+                          Colors.blue.shade100,
+                          () {
+                            // TODO: Navigate with category ID to products page & fetch category-specific products
+                          },
+                        ),
+                        _buildCategoryCard(
+                          context,
+                          'Kitchen Appliances',
+                          Icons.blender,
+                          Colors.orange.shade100,
+                          () {},
+                        ),
+                        _buildCategoryCard(
+                          context,
+                          'Home Decor',
+                          Icons.chair,
+                          Colors.green.shade100,
+                          () {},
+                        ),
+                        _buildCategoryCard(
+                          context,
+                          'Bed & Bath',
+                          Icons.king_bed,
+                          Colors.purple.shade100,
+                          () {},
+                        ),
+                        _buildCategoryCard(
+                          context,
+                          'Laundry',
+                          Icons.local_laundry_service,
+                          Colors.pink.shade100,
+                          () {},
+                        ),
+                        _buildCategoryCard(
+                          context,
+                          'Smart Home',
+                          Icons.wifi,
+                          Colors.cyan.shade100,
+                          () {},
+                        ),
                       ],
                     ),
                   ],
@@ -156,7 +194,10 @@ class ProductCategoriesScreen extends StatelessWidget {
                           onPressed: () {
                             // TODO: Navigate to popular products screen (fetch all from backend)
                           },
-                          child: const Text('See All', style: TextStyle(color: Colors.teal)),
+                          child: const Text(
+                            'See All',
+                            style: TextStyle(color: Colors.teal),
+                          ),
                         ),
                       ],
                     ),
@@ -165,17 +206,31 @@ class ProductCategoriesScreen extends StatelessWidget {
                     // TODO: Replace static list with dynamic API-fetched products
                     // Example:
                     // Future<List<Product>> fetchPopularProducts() => apiService.getPopularProducts();
-
                     SizedBox(
                       height: 180,
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         children: [
-                          _buildProductCard('Premium Vacuum Cleaner', '\$149.99', Icons.cleaning_services, () {
-                            // TODO: Navigate to product detail with ID, fetch product data from backend
-                          }),
-                          _buildProductCard('Smart Blender', '\$89.99', Icons.blender, () {}),
-                          _buildProductCard('Luxury Bed Sheets', '\$59.99', Icons.bed, () {}),
+                          _buildProductCard(
+                            'Premium Vacuum Cleaner',
+                            '\$149.99',
+                            Icons.cleaning_services,
+                            () {
+                              // TODO: Navigate to product detail with ID, fetch product data from backend
+                            },
+                          ),
+                          _buildProductCard(
+                            'Smart Blender',
+                            '\$89.99',
+                            Icons.blender,
+                            () {},
+                          ),
+                          _buildProductCard(
+                            'Luxury Bed Sheets',
+                            '\$59.99',
+                            Icons.bed,
+                            () {},
+                          ),
                         ],
                       ),
                     ),
@@ -196,8 +251,14 @@ class ProductCategoriesScreen extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.category),
+            label: 'Categories',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart),
+            label: 'Cart',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
         onTap: (index) {
@@ -209,7 +270,13 @@ class ProductCategoriesScreen extends StatelessWidget {
   }
 
   // CATEGORY CARD
-  Widget _buildCategoryCard(BuildContext context, String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildCategoryCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -229,22 +296,13 @@ class ProductCategoriesScreen extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 30,
-                color: color.withOpacity(0.8),
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              child: Icon(icon, size: 30, color: color.withOpacity(0.8)),
             ),
             const SizedBox(height: 10),
             Text(
               title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
           ],
@@ -254,7 +312,12 @@ class ProductCategoriesScreen extends StatelessWidget {
   }
 
   // PRODUCT CARD
-  Widget _buildProductCard(String title, String price, IconData icon, VoidCallback onTap) {
+  Widget _buildProductCard(
+    String title,
+    String price,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -283,13 +346,7 @@ class ProductCategoriesScreen extends StatelessWidget {
                     topRight: Radius.circular(15),
                   ),
                 ),
-                child: Center(
-                  child: Icon(
-                    icon,
-                    size: 50,
-                    color: Colors.teal,
-                  ),
-                ),
+                child: Center(child: Icon(icon, size: 50, color: Colors.teal)),
               ),
             ),
             Padding(
@@ -299,9 +356,7 @@ class ProductCategoriesScreen extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

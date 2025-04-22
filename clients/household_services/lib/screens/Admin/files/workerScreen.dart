@@ -695,7 +695,7 @@ class _WorkerScreenState extends State<WorkerScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Price: \$$price',
+                        'Price: \Tsh: $price',
                         style: TextStyle(color: Colors.grey[600], fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -861,7 +861,7 @@ class _WorkerScreenState extends State<WorkerScreen>
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '\$$price',
+                          '\Tsh: $price',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 13,
@@ -961,7 +961,7 @@ class _WorkerScreenState extends State<WorkerScreen>
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Search Workers...',
-              prefixIcon: Icon(Icons.search, color: primaryGreen),
+              prefixIcon: Icon(Icons.search, color: Colors.teal),
               filled: true,
               fillColor: paleGreen,
               border: OutlineInputBorder(
@@ -982,7 +982,7 @@ class _WorkerScreenState extends State<WorkerScreen>
                       Icon(
                         _isGridView ? Icons.grid_view : Icons.list,
                         size: 16,
-                        color: primaryGreen,
+                        color: Colors.teal,
                       ),
                       const SizedBox(width: 4),
                       Text(_isGridView ? 'Grid View' : 'List View'),
@@ -1259,7 +1259,7 @@ class _WorkerScreenState extends State<WorkerScreen>
       appBar: AppBar(
         title: Row(
           children: [
-            Icon(Icons.supervisor_account, color: primaryGreen),
+            Icon(Icons.supervisor_account, color: Colors.teal),
             const SizedBox(width: 8),
             const Text(
               'Worker Management',
@@ -1271,43 +1271,9 @@ class _WorkerScreenState extends State<WorkerScreen>
         elevation: 2,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: primaryGreen),
+            icon: Icon(Icons.refresh, color: Colors.teal),
             onPressed: _fetchWorkers,
             tooltip: 'Refresh',
-          ),
-          IconButton(
-            icon: Icon(Icons.logout, color: primaryGreen),
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder:
-                    (context) => AlertDialog(
-                      title: const Text('Logout'),
-                      content: const Text('Are you sure you want to logout?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryGreen,
-                          ),
-                          child: const Text('Logout'),
-                        ),
-                      ],
-                    ),
-              );
-
-              if (confirm == true) {
-                await _storage.delete(key: 'jwt_token');
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-              }
-            },
-            tooltip: 'Logout',
           ),
         ],
       ),

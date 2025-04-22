@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../Clients/product_list.dart';
-import '../Clients/Workers_Screen.dart';
+// import '../Clients/Workers_Screen.dart';
+import '../Clients/Workers_detail.dart';
 import 'dart:math' as math;
 
 class WaveClipper extends CustomClipper<Path> {
@@ -8,17 +9,25 @@ class WaveClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     var path = Path();
     path.lineTo(0, size.height * 0.75);
-    
+
     var firstControlPoint = Offset(size.width * 0.25, size.height * 0.85);
     var firstEndPoint = Offset(size.width * 0.5, size.height * 0.75);
-    path.quadraticBezierTo(firstControlPoint.dx, firstControlPoint.dy,
-        firstEndPoint.dx, firstEndPoint.dy);
-    
+    path.quadraticBezierTo(
+      firstControlPoint.dx,
+      firstControlPoint.dy,
+      firstEndPoint.dx,
+      firstEndPoint.dy,
+    );
+
     var secondControlPoint = Offset(size.width * 0.75, size.height * 0.65);
     var secondEndPoint = Offset(size.width, size.height * 0.75);
-    path.quadraticBezierTo(secondControlPoint.dx, secondControlPoint.dy,
-        secondEndPoint.dx, secondEndPoint.dy);
-    
+    path.quadraticBezierTo(
+      secondControlPoint.dx,
+      secondControlPoint.dy,
+      secondEndPoint.dx,
+      secondEndPoint.dy,
+    );
+
     path.lineTo(size.width, 0);
     path.close();
     return path;
@@ -37,11 +46,7 @@ class PlantIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Proper implementation of PlantIcon - returns a widget, not MaterialApp
-    return Icon(
-      Icons.local_florist,
-      size: size,
-      color: color,
-    );
+    return Icon(Icons.local_florist, size: size, color: color);
   }
 }
 
@@ -61,9 +66,7 @@ class HouseholdServiceApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: Color(0xFF2E3E5C),
           ),
-          bodyLarge: TextStyle(
-            color: Color(0xFF4D5E80),
-          ),
+          bodyLarge: TextStyle(color: Color(0xFF4D5E80)),
         ),
       ),
       // Define routes for navigation
@@ -71,7 +74,7 @@ class HouseholdServiceApp extends StatelessWidget {
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/products': (context) => const ProductCategoriesScreen(),
-        '/workers': (context) => const DomesticWorkersScreen(),
+        '/workers': (context) => const WorkerDetailScreen(),
       },
     );
   }
@@ -83,7 +86,8 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Create a key for the dropdown to access its state
-    final GlobalKey<ServiceSelectionDropdownState> dropdownKey = GlobalKey<ServiceSelectionDropdownState>();
+    final GlobalKey<ServiceSelectionDropdownState> dropdownKey =
+        GlobalKey<ServiceSelectionDropdownState>();
 
     return Scaffold(
       body: Container(
@@ -221,10 +225,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   child: const Text(
                     "Get Started",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -241,7 +242,8 @@ class ServiceSelectionDropdown extends StatefulWidget {
   const ServiceSelectionDropdown({super.key});
 
   @override
-  ServiceSelectionDropdownState createState() => ServiceSelectionDropdownState();
+  ServiceSelectionDropdownState createState() =>
+      ServiceSelectionDropdownState();
 }
 
 class ServiceSelectionDropdownState extends State<ServiceSelectionDropdown> {
@@ -261,17 +263,19 @@ class ServiceSelectionDropdownState extends State<ServiceSelectionDropdown> {
 
   void navigateToService(BuildContext context) {
     if (selectedService == null) return;
-    
+
     // Navigate based on the selected option
     if (selectedService == 'home_products') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const ProductCategoriesScreen()),
+        MaterialPageRoute(
+          builder: (context) => const ProductCategoriesScreen(),
+        ),
       );
     } else if (selectedService == 'domestic_workers') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const DomesticWorkersScreen()),
+        MaterialPageRoute(builder: (context) => const WorkerDetailScreen()),
       );
     }
   }
@@ -308,18 +312,21 @@ class ServiceSelectionDropdownState extends State<ServiceSelectionDropdown> {
                 selectedService = newValue;
               });
             },
-            items: services.map<DropdownMenuItem<String>>((Map<String, dynamic> service) {
-              return DropdownMenuItem<String>(
-                value: service['value'],
-                child: Row(
-                  children: [
-                    Icon(service['icon'], color: Colors.teal),
-                    const SizedBox(width: 12),
-                    Text(service['label']),
-                  ],
-                ),
-              );
-            }).toList(),
+            items:
+                services.map<DropdownMenuItem<String>>((
+                  Map<String, dynamic> service,
+                ) {
+                  return DropdownMenuItem<String>(
+                    value: service['value'],
+                    child: Row(
+                      children: [
+                        Icon(service['icon'], color: Colors.teal),
+                        const SizedBox(width: 12),
+                        Text(service['label']),
+                      ],
+                    ),
+                  );
+                }).toList(),
           ),
         ),
       ),

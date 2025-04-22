@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class Worker {
-  final int id;
+  final int workerId;
+  final int? adminId;
   final String name;
   final String description;
   final double price;
@@ -13,11 +14,12 @@ class Worker {
   final String location;
   final String phone;
   final String workHour;
-  double rating; // Not in DB but shown in UI
-  int experience; // Not in DB but can be calculated or added
+  double rating;
+  int experience;
 
   Worker({
-    required this.id,
+    required this.workerId,
+    this.adminId,
     required this.name,
     required this.description,
     required this.price,
@@ -33,7 +35,8 @@ class Worker {
 
   factory Worker.fromJson(Map<String, dynamic> json) {
     return Worker(
-      id: json['worker_id'],
+      workerId: json['worker_id'],
+      adminId: json['admin_id'],
       name: json['name'],
       description: json['description'] ?? '',
       price: double.parse(json['price'].toString()),
@@ -50,6 +53,22 @@ class Worker {
       experience: json['experience'] ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'worker_id': workerId,
+    'admin_id': adminId,
+    'name': name,
+    'description': description,
+    'price': price,
+    'availability': availability,
+    'specialist': specialist,
+    'age': age,
+    'location': location,
+    'phone': phone,
+    'work_hour': workHour,
+    'rating': rating,
+    'experience': experience,
+  };
 }
 
 class WorkerDetailScreen extends StatefulWidget {
@@ -66,16 +85,17 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
   List<Worker> filteredWorkers = [];
   bool isLoading = true;
   String searchQuery = '';
+
+  // Filter variables
   String selectedSpecialty = 'All';
-  List<String> specialties = [
-    'All',
-    'Cleaning',
-    'Cooking',
-    'Childcare',
-    'Gardening',
-    'Plumbing',
-    'Electrical',
-  ];
+  String selectedLocation = 'All';
+  RangeValues priceRange = RangeValues(0, 1000);
+  RangeValues ageRange = RangeValues(18, 65);
+  bool showFilters = false;
+
+  List<String> specialties = ['All'];
+  List<String> locations = ['All'];
+
   String sortBy = 'Top Rated';
   List<String> sortOptions = [
     'Top Rated',
@@ -93,44 +113,85 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
   Future<void> fetchWorkers() async {
     setState(() {
       isLoading = true;
+      workers = [];
+      filteredWorkers = [];
     });
 
     try {
       final response = await http.get(
         Uri.parse('http://localhost:3000/api/workers'),
+        headers: {'Content-Type': 'application/json'},
       );
 
+      print('API Response: ${response.body}');
+
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final List<dynamic> responseData = json.decode(response.body);
+
+        if (responseData.isEmpty) {
+          showErrorSnackBar('No workers found');
+          return;
+        }
 
         setState(() {
           workers =
-              data.map((worker) {
-                // Add mock rating and experience for UI purposes
-                final workerData = {...(worker as Map<String, dynamic>)};
-                workerData['rating'] =
-                    (3.5 +
-                        (worker['worker_id'] % 3) *
-                            0.5); // Random rating between 3.5-5.0
-                workerData['experience'] =
-                    1 +
-                    (worker['worker_id'] %
-                        10); // Random experience between 1-10 years
+              responseData.map((workerJson) {
+                final workerData = workerJson as Map<String, dynamic>;
+                workerData['rating'] ??=
+                    (3.5 + (workerData['worker_id'] % 3) * 0.5);
+                workerData['experience'] ??= 1 + (workerData['worker_id'] % 10);
                 return Worker.fromJson(workerData);
               }).toList();
 
-          // Initial filtering
+          _updateFilterOptions();
           applyFilters();
           isLoading = false;
         });
       } else {
-        throw Exception('Failed to load workers');
+        throw Exception('Failed to load workers: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
         isLoading = false;
       });
       showErrorSnackBar('Error fetching workers: $e');
+      print('Error details: $e');
+    }
+  }
+
+  void _updateFilterOptions() {
+    // Get all unique locations from workers
+    final allLocations =
+        workers
+            .map((w) => w.location)
+            .where((loc) => loc.isNotEmpty)
+            .toSet()
+            .toList();
+    locations = ['All', ...allLocations];
+
+    // Get all unique specialties from workers
+    final allSpecialties =
+        workers
+            .map((w) => w.specialist)
+            .where((spec) => spec.isNotEmpty)
+            .toSet()
+            .toList();
+    specialties = ['All', ...allSpecialties];
+
+    // Initialize price range
+    if (workers.isNotEmpty) {
+      final prices = workers.map((w) => w.price).toList();
+      final minPrice = prices.reduce((min, price) => price < min ? price : min);
+      final maxPrice = prices.reduce((max, price) => price > max ? price : max);
+      priceRange = RangeValues(minPrice, maxPrice);
+    }
+
+    // Initialize age range
+    if (workers.isNotEmpty) {
+      final ages = workers.map((w) => w.age.toDouble()).toList();
+      final minAge = ages.reduce((min, age) => age < min ? age : min);
+      final maxAge = ages.reduce((max, age) => age > max ? age : max);
+      ageRange = RangeValues(minAge, maxAge);
     }
   }
 
@@ -138,25 +199,41 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
     setState(() {
       filteredWorkers =
           workers.where((worker) {
-            // Apply search filter
-            final nameMatch = worker.name.toLowerCase().contains(
-              searchQuery.toLowerCase(),
-            );
-            final descriptionMatch = worker.description.toLowerCase().contains(
-              searchQuery.toLowerCase(),
-            );
-            final locationMatch = worker.location.toLowerCase().contains(
-              searchQuery.toLowerCase(),
-            );
+            // Search filter
+            final searchMatch =
+                searchQuery.isEmpty ||
+                worker.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                worker.description.toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ) ||
+                worker.location.toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                );
 
-            // Apply specialty filter
+            // Specialty filter
             final specialtyMatch =
                 selectedSpecialty == 'All' ||
-                worker.specialist.toLowerCase() ==
-                    selectedSpecialty.toLowerCase();
+                worker.specialist == selectedSpecialty;
 
-            return (nameMatch || descriptionMatch || locationMatch) &&
-                specialtyMatch;
+            // Location filter
+            final locationMatch =
+                selectedLocation == 'All' ||
+                worker.location == selectedLocation;
+
+            // Price filter
+            final priceMatch =
+                worker.price >= priceRange.start &&
+                worker.price <= priceRange.end;
+
+            // Age filter
+            final ageMatch =
+                worker.age >= ageRange.start && worker.age <= ageRange.end;
+
+            return searchMatch &&
+                specialtyMatch &&
+                locationMatch &&
+                priceMatch &&
+                ageMatch;
           }).toList();
 
       // Apply sorting
@@ -179,7 +256,11 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
 
   void showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -188,24 +269,28 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: Color(0xFF009688),
+        backgroundColor: const Color(0xFF009688),
         elevation: 0,
-        title: Text(
+        title: const Text(
           'Domestic Workers',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
+            icon: const Icon(Icons.filter_list, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                showFilters = !showFilters;
+              });
+            },
           ),
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.white),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: fetchWorkers,
           ),
         ],
       ),
@@ -213,12 +298,12 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
         children: [
           // Header Section
           Container(
-            padding: EdgeInsets.all(16),
-            color: Color(0xFF009688),
+            padding: const EdgeInsets.all(16),
+            color: const Color(0xFF009688),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
+                const Text(
                   'Find Skilled Professionals',
                   style: TextStyle(
                     fontSize: 22,
@@ -226,7 +311,7 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
+                const Text(
                   'for Your Home',
                   style: TextStyle(
                     fontSize: 22,
@@ -234,7 +319,7 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 // Search Box
                 TextField(
                   onChanged: (value) {
@@ -245,29 +330,256 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                   },
                   decoration: InputDecoration(
                     hintText: 'Search for services...',
-                    prefixIcon: Icon(Icons.search, color: Colors.grey),
-                    suffixIcon: Icon(Icons.filter_list, color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(30),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: EdgeInsets.symmetric(vertical: 0),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                 ),
               ],
             ),
           ),
 
+          // Filters Section
+          if (showFilters)
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Filter Options',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            selectedSpecialty = 'All';
+                            selectedLocation = 'All';
+                            if (workers.isNotEmpty) {
+                              final prices =
+                                  workers.map((w) => w.price).toList();
+                              priceRange = RangeValues(
+                                prices.reduce(
+                                  (min, price) => price < min ? price : min,
+                                ),
+                                prices.reduce(
+                                  (max, price) => price > max ? price : max,
+                                ),
+                              );
+                              final ages =
+                                  workers.map((w) => w.age.toDouble()).toList();
+                              ageRange = RangeValues(
+                                ages.reduce(
+                                  (min, age) => age < min ? age : min,
+                                ),
+                                ages.reduce(
+                                  (max, age) => age > max ? age : max,
+                                ),
+                              );
+                            }
+                            applyFilters();
+                          });
+                        },
+                        child: const Text('Reset All'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Specialty Filter
+                  const Text(
+                    'Specialty',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: selectedSpecialty,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            selectedSpecialty = newValue;
+                            applyFilters();
+                          });
+                        }
+                      },
+                      items:
+                          specialties.map<DropdownMenuItem<String>>((
+                            String value,
+                          ) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Location Filter
+                  const Text(
+                    'Location',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: selectedLocation,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            selectedLocation = newValue;
+                            applyFilters();
+                          });
+                        }
+                      },
+                      items:
+                          locations.map<DropdownMenuItem<String>>((
+                            String value,
+                          ) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Price Range Filter
+                  Text(
+                    'Price Range (Tsh ${priceRange.start.toInt()} - Tsh ${priceRange.end.toInt()})',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  RangeSlider(
+                    values: priceRange,
+                    min:
+                        workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.price)
+                                .reduce(
+                                  (min, price) => price < min ? price : min,
+                                )
+                            : 0,
+                    max:
+                        workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.price)
+                                .reduce(
+                                  (max, price) => price > max ? price : max,
+                                )
+                            : 1000,
+                    divisions: 20,
+                    activeColor: const Color(0xFF009688),
+                    inactiveColor: Colors.grey[300],
+                    labels: RangeLabels(
+                      'Tsh ${priceRange.start.toInt()}',
+                      'Tsh ${priceRange.end.toInt()}',
+                    ),
+                    onChanged: (RangeValues values) {
+                      setState(() {
+                        priceRange = values;
+                      });
+                    },
+                    onChangeEnd: (RangeValues values) {
+                      applyFilters();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Age Range Filter
+                  Text(
+                    'Age Range (${ageRange.start.toInt()} - ${ageRange.end.toInt()} years)',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  RangeSlider(
+                    values: ageRange,
+                    min:
+                        workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.age.toDouble())
+                                .reduce((min, age) => age < min ? age : min)
+                            : 18,
+                    max:
+                        workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.age.toDouble())
+                                .reduce((max, age) => age > max ? age : max)
+                            : 65,
+                    divisions: 47,
+                    activeColor: const Color(0xFF009688),
+                    inactiveColor: Colors.grey[300],
+                    labels: RangeLabels(
+                      '${ageRange.start.toInt()}',
+                      '${ageRange.end.toInt()}',
+                    ),
+                    onChanged: (RangeValues values) {
+                      setState(() {
+                        ageRange = values;
+                      });
+                    },
+                    onChangeEnd: (RangeValues values) {
+                      applyFilters();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Apply Filters Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        applyFilters();
+                        setState(() {
+                          showFilters = false;
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF009688),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('APPLY FILTERS'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Specialties Section
           Container(
-            padding: EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 16, bottom: 8),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16, bottom: 8),
                   child: Text(
                     'Services',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -277,14 +589,10 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                   height: 100,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount:
-                        specialties.length -
-                        1, // Skip "All" in the visual display
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: specialties.length - 1, // Skip "All"
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     itemBuilder: (context, index) {
-                      final specialty =
-                          specialties[index +
-                              1]; // Skip "All" in the visual display
+                      final specialty = specialties[index + 1];
                       return GestureDetector(
                         onTap: () {
                           setState(() {
@@ -294,20 +602,20 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                         },
                         child: Container(
                           width: 80,
-                          margin: EdgeInsets.symmetric(horizontal: 4),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Container(
-                                padding: EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color:
                                       selectedSpecialty == specialty
-                                          ? Color(0xFF009688)
+                                          ? const Color(0xFF009688)
                                           : Colors.white,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: Color(0xFF009688),
+                                    color: const Color(0xFF009688),
                                     width: 2,
                                   ),
                                 ),
@@ -316,11 +624,11 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                                   color:
                                       selectedSpecialty == specialty
                                           ? Colors.white
-                                          : Color(0xFF009688),
+                                          : const Color(0xFF009688),
                                   size: 24,
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
                                 specialty,
                                 style: TextStyle(
@@ -343,6 +651,93 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
             ),
           ),
 
+          // Active Filters Chips
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                if (selectedSpecialty != 'All')
+                  _buildFilterChip('Service: $selectedSpecialty', () {
+                    setState(() {
+                      selectedSpecialty = 'All';
+                      applyFilters();
+                    });
+                  }),
+                if (selectedLocation != 'All')
+                  _buildFilterChip('Location: $selectedLocation', () {
+                    setState(() {
+                      selectedLocation = 'All';
+                      applyFilters();
+                    });
+                  }),
+                if (priceRange.start >
+                        (workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.price)
+                                .reduce(
+                                  (min, price) => price < min ? price : min,
+                                )
+                            : 0) ||
+                    priceRange.end <
+                        (workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.price)
+                                .reduce(
+                                  (max, price) => price > max ? price : max,
+                                )
+                            : 1000))
+                  _buildFilterChip(
+                    'Price: Tsh ${priceRange.start.toInt()}-Tsh ${priceRange.end.toInt()}',
+                    () {
+                      setState(() {
+                        if (workers.isNotEmpty) {
+                          final prices = workers.map((w) => w.price).toList();
+                          priceRange = RangeValues(
+                            prices.reduce(
+                              (min, price) => price < min ? price : min,
+                            ),
+                            prices.reduce(
+                              (max, price) => price > max ? price : max,
+                            ),
+                          );
+                        }
+                        applyFilters();
+                      });
+                    },
+                  ),
+                if (ageRange.start >
+                        (workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.age.toDouble())
+                                .reduce((min, age) => age < min ? age : min)
+                            : 18) ||
+                    ageRange.end <
+                        (workers.isNotEmpty
+                            ? workers
+                                .map((w) => w.age.toDouble())
+                                .reduce((max, age) => age > max ? age : max)
+                            : 65))
+                  _buildFilterChip(
+                    'Age: ${ageRange.start.toInt()}-${ageRange.end.toInt()}',
+                    () {
+                      setState(() {
+                        if (workers.isNotEmpty) {
+                          final ages =
+                              workers.map((w) => w.age.toDouble()).toList();
+                          ageRange = RangeValues(
+                            ages.reduce((min, age) => age < min ? age : min),
+                            ages.reduce((max, age) => age > max ? age : max),
+                          );
+                        }
+                        applyFilters();
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ),
+
           // Available Workers Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -350,13 +745,16 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Available Workers',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  'Available Workers (${filteredWorkers.length})',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 DropdownButton<String>(
                   value: sortBy,
-                  underline: SizedBox(),
-                  icon: Icon(Icons.keyboard_arrow_down),
+                  underline: const SizedBox(),
+                  icon: const Icon(Icons.keyboard_arrow_down),
                   items:
                       sortOptions.map((String value) {
                         return DropdownMenuItem<String>(
@@ -381,50 +779,48 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
           Expanded(
             child:
                 isLoading
-                    ? Center(
+                    ? const Center(
                       child: CircularProgressIndicator(
                         color: Color(0xFF009688),
                       ),
                     )
                     : filteredWorkers.isEmpty
-                    ? Center(
+                    ? const Center(
                       child: Text('No workers found matching your criteria'),
                     )
-                    : ListView.builder(
-                      itemCount: filteredWorkers.length,
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      itemBuilder: (context, index) {
-                        final worker = filteredWorkers[index];
-                        return _buildWorkerCard(worker);
-                      },
+                    : RefreshIndicator(
+                      color: const Color(0xFF009688),
+                      onRefresh: fetchWorkers,
+                      child: ListView.builder(
+                        itemCount: filteredWorkers.length,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemBuilder: (context, index) {
+                          final worker = filteredWorkers[index];
+                          return _buildWorkerCard(worker);
+                        },
+                      ),
                     ),
-          ),
-
-          // Bottom Navigation
-          Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildNavItem(Icons.home, 'Home', true),
-                _buildNavItem(Icons.search, 'Search', false),
-                _buildNavItem(Icons.calendar_today, 'Bookings', false),
-                _buildNavItem(Icons.person, 'Profile', false),
-              ],
-            ),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildFilterChip(String label, VoidCallback onRemove) {
+    return Chip(
+      label: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
+      backgroundColor: const Color(0xFF009688),
+      deleteIconColor: Colors.white,
+      onDeleted: onRemove,
+    );
+  }
+
   Widget _buildWorkerCard(Worker worker) {
     return Card(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
@@ -438,7 +834,7 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -448,7 +844,7 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                 backgroundColor: Colors.grey[300],
                 child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               // Worker Details
               Expanded(
                 child: Column(
@@ -456,32 +852,62 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                   children: [
                     Text(
                       worker.name,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       worker.specialist,
                       style: TextStyle(color: Colors.grey[600], fontSize: 16),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.star, color: Colors.amber, size: 18),
-                        SizedBox(width: 4),
-                        Text(
-                          worker.rating.toStringAsFixed(1),
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                        const Icon(
+                          Icons.location_on,
+                          color: Colors.grey,
+                          size: 16,
                         ),
-                        SizedBox(width: 16),
-                        Icon(Icons.access_time, color: Colors.grey, size: 18),
-                        SizedBox(width: 4),
-                        Text('${worker.experience} yrs'),
+                        const SizedBox(width: 4),
+                        Text(
+                          worker.location,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          worker.rating.toStringAsFixed(1),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 16),
+                        const Icon(
+                          Icons.access_time,
+                          color: Colors.grey,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text('${worker.experience} yrs'),
+                        const SizedBox(width: 16),
+                        const Icon(
+                          Icons.calendar_today,
+                          color: Colors.grey,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text('${worker.age} yrs old'),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       worker.description.isNotEmpty
                           ? worker.description
@@ -498,30 +924,30 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '\$${worker.price.toStringAsFixed(0)}/hr',
-                    style: TextStyle(
+                    'Tsh ${worker.price.toStringAsFixed(0)}/hr',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       color: Colors.black87,
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       // Handle booking
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF009688),
+                      backgroundColor: const Color(0xFF009688),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
                     ),
-                    child: Text('BOOK'),
+                    child: const Text('BOOK'),
                   ),
                 ],
               ),
@@ -529,23 +955,6 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: isActive ? Color(0xFF009688) : Colors.grey, size: 24),
-        SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Color(0xFF009688) : Colors.grey,
-            fontSize: 12,
-          ),
-        ),
-      ],
     );
   }
 
@@ -569,7 +978,6 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
   }
 }
 
-// Worker Profile Screen for detailed view
 class WorkerProfileScreen extends StatelessWidget {
   final Worker worker;
 
@@ -578,321 +986,128 @@ class WorkerProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200.0,
-            floating: false,
-            pinned: true,
-            backgroundColor: Color(0xFF009688),
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
+      appBar: AppBar(
+        title: Text(worker.name),
+        backgroundColor: const Color(0xFF009688),
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: Colors.grey[300],
+                child: const Icon(Icons.person, size: 80, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
                 worker.name,
-                style: TextStyle(
-                  color: Colors.white,
+                style: const TextStyle(
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              background: Container(
-                color: Color(0xFF009688),
-                child: Center(
-                  child: Icon(
-                    _getIconForSpecialty(worker.specialist),
-                    size: 80,
-                    color: Colors.white.withOpacity(0.3),
+            ),
+            Center(
+              child: Text(
+                worker.specialist,
+                style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              ),
+            ),
+            const SizedBox(height: 30),
+            _buildProfileItem(
+              Icons.star,
+              'Rating',
+              worker.rating.toStringAsFixed(1),
+            ),
+            _buildProfileItem(
+              Icons.work,
+              'Experience',
+              '${worker.experience} years',
+            ),
+            _buildProfileItem(
+              Icons.calendar_today,
+              'Age',
+              '${worker.age} years',
+            ),
+            _buildProfileItem(Icons.location_on, 'Location', worker.location),
+            _buildProfileItem(Icons.phone, 'Phone', worker.phone),
+            _buildProfileItem(
+              Icons.access_time,
+              'Working Hours',
+              worker.workHour,
+            ),
+            _buildProfileItem(
+              Icons.attach_money,
+              'Hourly Rate',
+              'Tsh ${worker.price.toStringAsFixed(0)}',
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'About',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              worker.description.isNotEmpty
+                  ? worker.description
+                  : 'Professional ${worker.specialist} with ${worker.experience} years of experience.',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Handle booking
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF009688),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                child: const Text('BOOK NOW', style: TextStyle(fontSize: 18)),
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Profile Header
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.grey[300],
-                        child: Icon(
-                          Icons.person,
-                          size: 50,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              worker.specialist,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.star, color: Colors.amber, size: 18),
-                                SizedBox(width: 4),
-                                Text(
-                                  '${worker.rating.toStringAsFixed(1)} (${20 + worker.id * 3} reviews)',
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  color: Colors.grey,
-                                  size: 18,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  '${worker.experience} years experience',
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // Price and Availability
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Column(
-                          children: [
-                            Text(
-                              'Hourly Rate',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '\$${worker.price.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: Color(0xFF009688),
-                              ),
-                            ),
-                          ],
-                        ),
-                        VerticalDivider(
-                          thickness: 1,
-                          width: 40,
-                          color: Colors.grey[300],
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              'Availability',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              worker.availability == 1
-                                  ? 'Available'
-                                  : 'Unavailable',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color:
-                                    worker.availability == 1
-                                        ? Colors.green
-                                        : Colors.red,
-                              ),
-                            ),
-                          ],
-                        ),
-                        VerticalDivider(
-                          thickness: 1,
-                          width: 40,
-                          color: Colors.grey[300],
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              'Hours',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              worker.workHour.isNotEmpty
-                                  ? worker.workHour
-                                  : 'Flexible',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // About
-                  Text(
-                    'About',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    worker.description.isNotEmpty
-                        ? worker.description
-                        : 'Professional ${worker.specialist} with ${worker.experience} years of experience. Dedicated to providing high-quality service with attention to detail. Available for both short-term and long-term assignments.',
-                    style: TextStyle(fontSize: 16, height: 1.5),
-                  ),
-
-                  SizedBox(height: 24),
-
-                  // Contact Information
-                  Text(
-                    'Contact Information',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 16),
-                  _buildContactItem(
-                    Icons.phone,
-                    'Phone',
-                    worker.phone.isNotEmpty
-                        ? worker.phone
-                        : '+1 (555) 123-4567',
-                  ),
-                  SizedBox(height: 12),
-                  _buildContactItem(
-                    Icons.location_on,
-                    'Location',
-                    worker.location.isNotEmpty
-                        ? worker.location
-                        : 'City Center',
-                  ),
-                  SizedBox(height: 12),
-                  _buildContactItem(
-                    Icons.calendar_today,
-                    'Age',
-                    '${worker.age} years old',
-                  ),
-
-                  SizedBox(height: 32),
-
-                  // Book Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Handle booking
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Booking request sent for ${worker.name}',
-                            ),
-                            backgroundColor: Color(0xFF009688),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF009688),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: Text(
-                        'BOOK NOW',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildContactItem(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Color(0xFF009688).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildProfileItem(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF009688)),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          child: Icon(icon, color: Color(0xFF009688)),
-        ),
-        SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-            SizedBox(height: 2),
-            Text(
-              value,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ],
+        ],
+      ),
     );
-  }
-
-  IconData _getIconForSpecialty(String specialty) {
-    switch (specialty.toLowerCase()) {
-      case 'cleaning':
-        return Icons.cleaning_services;
-      case 'cooking':
-        return Icons.restaurant;
-      case 'childcare':
-        return Icons.child_care;
-      case 'gardening':
-        return Icons.yard;
-      case 'plumbing':
-        return Icons.plumbing;
-      case 'electrical':
-        return Icons.electrical_services;
-      default:
-        return Icons.work;
-    }
   }
 }

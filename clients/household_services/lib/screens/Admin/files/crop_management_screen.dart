@@ -9,17 +9,6 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
-// Make sure to add these permission configs to your app:
-// For Android: Add to android/app/src/main/AndroidManifest.xml:
-// <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-// <uses-permission android:name="android.permission.CAMERA" />
-//
-// For iOS: Add to ios/Runner/Info.plist:
-// <key>NSPhotoLibraryUsageDescription</key>
-// <string>This app needs access to your photo library to select crop images</string>
-// <key>NSCameraUsageDescription</key>
-// <string>This app needs access to your camera to take crop photos</string>
-
 class Crop {
   final int? id;
   final int? farmerId;
@@ -28,6 +17,7 @@ class Crop {
   final double price;
   final int availability;
   final String? imagePath;
+  final String category;
 
   Crop({
     this.id,
@@ -37,7 +27,10 @@ class Crop {
     required this.price,
     required this.availability,
     this.imagePath,
+    required this.category,
   });
+
+ 
 
   factory Crop.fromJson(Map<String, dynamic> json) {
     return Crop(
@@ -48,6 +41,7 @@ class Crop {
       price: double.parse(json['price'].toString()),
       availability: json['availability'],
       imagePath: json['image_path'],
+      category: json['category'] ?? 'Other',
     );
   }
 
@@ -58,6 +52,7 @@ class Crop {
       'description': description,
       'price': price,
       'availability': availability,
+      'category': category,
     };
   }
 }
@@ -72,11 +67,15 @@ class CropManagementScreen extends StatefulWidget {
 class _CropManagementScreenState extends State<CropManagementScreen>
     with TickerProviderStateMixin {
   List<Crop> _crops = [];
+  List<Crop> _filteredCrops = [];
   bool _isLoading = true;
   final String _baseUrl = 'http://localhost:3000/api';
   final ImagePicker _picker = ImagePicker();
   final currencyFormat = NumberFormat("#,##0.00", "en_US");
   late AnimationController _fabAnimationController;
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedCategory = 'All Crops';
+  String _sortBy = 'Name (A-Z)';
 
   @override
   void initState() {
@@ -86,12 +85,60 @@ class _CropManagementScreenState extends State<CropManagementScreen>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
+    _searchController.addListener(_filterCrops);
   }
 
   @override
   void dispose() {
     _fabAnimationController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _filterCrops() {
+    final searchTerm = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredCrops =
+          _crops.where((crop) {
+            final matchesSearch =
+                crop.name.toLowerCase().contains(searchTerm) ||
+                crop.description.toLowerCase().contains(searchTerm) ||
+                crop.category.toLowerCase().contains(searchTerm);
+            final matchesCategory =
+                _selectedCategory == 'All Crops' ||
+                crop.category == _selectedCategory;
+            return matchesSearch && matchesCategory;
+          }).toList();
+
+      _applySorting();
+    });
+  }
+
+  void _applySorting() {
+    switch (_sortBy) {
+      case 'Name (A-Z)':
+        _filteredCrops.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'Name (Z-A)':
+        _filteredCrops.sort((a, b) => b.name.compareTo(a.name));
+        break;
+      case 'Price (Low-High)':
+        _filteredCrops.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Price (High-Low)':
+        _filteredCrops.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Availability':
+        _filteredCrops.sort((a, b) => b.availability.compareTo(a.availability));
+        break;
+    }
+  }
+
+  void _resetFilters() {
+    _searchController.clear();
+    _selectedCategory = 'All Crops';
+    _sortBy = 'Name (A-Z)';
+    _filterCrops();
   }
 
   Future<void> _fetchCrops() async {
@@ -105,6 +152,8 @@ class _CropManagementScreenState extends State<CropManagementScreen>
         final List<dynamic> data = json.decode(response.body);
         setState(() {
           _crops = data.map((crop) => Crop.fromJson(crop)).toList();
+          _filteredCrops = List.from(_crops);
+          _applySorting();
         });
       } else {
         _showSnackBar('Failed to load crops: ${response.statusCode}');
@@ -118,12 +167,388 @@ class _CropManagementScreenState extends State<CropManagementScreen>
     }
   }
 
+  Map<String, int> _getCropStatistics() {
+    Map<String, int> stats = {};
+    for (var crop in _crops) {
+      stats.update(crop.category, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return stats;
+  }
+
+  Widget _buildStatistics() {
+    final stats = _getCropStatistics();
+    final total = _crops.length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.teal.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Product Statistics',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.teal,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Total product: $total',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ...stats.entries.map((entry) {
+            final percentage = (entry.value / total * 100).toStringAsFixed(1);
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(flex: 2, child: Text(entry.key)),
+                  Expanded(
+                    flex: 3,
+                    child: LinearProgressIndicator(
+                      value: entry.value / total,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.teal.withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('$entry.value ($percentage%)'),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterControls() {
+    final categories = ['All Crops', ..._getCropStatistics().keys.toList()];
+    final sortOptions = [
+      'Name (A-Z)',
+      'Name (Z-A)',
+      'Price (Low-High)',
+      'Price (High-Low)',
+      'Availability',
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.teal.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Filter & Sort',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.teal,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  items:
+                      categories.map((category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategory = value!;
+                      _filterCrops();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  isExpanded: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _sortBy,
+                  items:
+                      sortOptions.map((option) {
+                        return DropdownMenuItem<String>(
+                          value: option,
+                          child: Text(option),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _sortBy = value!;
+                      _applySorting();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Sort By',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  isExpanded: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.filter_alt_outlined, size: 18),
+                  label: const Text('Apply Filters'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: _filterCrops,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.restart_alt, size: 18),
+                  label: const Text('Reset'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[300],
+                    foregroundColor: Colors.grey[800],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: _resetFilters,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCropCard(Crop crop, int index) {
+    return FadeInUp(
+      duration: Duration(milliseconds: 300 + (index * 100)),
+      child: Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _showCropDialog(crop: crop),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image section
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[200],
+                      ),
+                      child:
+                          crop.imagePath != null
+                              ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  '$_baseUrl/${crop.imagePath}',
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                          _buildPlaceholderImage(),
+                                ),
+                              )
+                              : _buildPlaceholderImage(),
+                    ),
+                    const SizedBox(width: 16),
+                    // Details section
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  crop.name,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.teal,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      crop.availability > 0
+                                          ? Colors.green.withOpacity(0.2)
+                                          : Colors.red.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  crop.availability > 0 ? 'In Stock' : 'Out',
+                                  style: TextStyle(
+                                    color:
+                                        crop.availability > 0
+                                            ? Colors.green[800]
+                                            : Colors.red[800],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            crop.category,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            crop.description,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[800],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Divider(color: Colors.grey[300], height: 1),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text(
+                      'Tsh ${currencyFormat.format(crop.price)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Available: ${crop.availability}',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      color: Colors.teal,
+                      onPressed: () => _showCropDialog(crop: crop),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      color: Colors.red[400],
+                      onPressed: () => _confirmDeleteCrop(crop),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteCrop(Crop crop) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Crop'),
+            content: Text('Are you sure you want to delete ${crop.name}?'),
+            actions: [
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () => Navigator.pop(context),
+              ),
+              TextButton(
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteCrop(crop.id!);
+                },
+              ),
+            ],
+          ),
+    );
+  }
+
   Future<void> _deleteCrop(int id) async {
     try {
       final response = await http.delete(Uri.parse('$_baseUrl/crops/$id'));
       if (response.statusCode == 200) {
         setState(() {
           _crops.removeWhere((crop) => crop.id == id);
+          _filterCrops();
         });
         _showSnackBar('Crop deleted successfully');
       } else {
@@ -178,6 +603,9 @@ class _CropManagementScreenState extends State<CropManagementScreen>
     );
     final TextEditingController farmerIdController = TextEditingController(
       text: crop?.farmerId?.toString() ?? '1',
+    );
+    final TextEditingController categoryController = TextEditingController(
+      text: crop?.category ?? 'Vegetables',
     );
 
     File? imageFile;
@@ -277,6 +705,20 @@ class _CropManagementScreenState extends State<CropManagementScreen>
                               ),
                             ),
                             keyboardType: TextInputType.number,
+                          ),
+                          TextField(
+                            controller: categoryController,
+                            decoration: InputDecoration(
+                              labelText: 'Category',
+                              labelStyle: TextStyle(
+                                color: Colors.teal.shade300,
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.teal.shade400,
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 20),
                           if (imageFile != null)
@@ -421,6 +863,7 @@ class _CropManagementScreenState extends State<CropManagementScreen>
                               availability:
                                   int.tryParse(availabilityController.text) ??
                                   0,
+                              category: categoryController.text,
                             );
 
                             if (crop == null) {
@@ -466,6 +909,7 @@ class _CropManagementScreenState extends State<CropManagementScreen>
         request.fields['price'] = crop.price.toString();
         request.fields['availability'] = crop.availability.toString();
         request.fields['farmer_id'] = crop.farmerId.toString();
+        request.fields['category'] = crop.category;
 
         final fileStream = http.ByteStream(imageFile.openRead());
         final fileLength = await imageFile.length();
@@ -526,6 +970,7 @@ class _CropManagementScreenState extends State<CropManagementScreen>
         request.fields['price'] = crop.price.toString();
         request.fields['availability'] = crop.availability.toString();
         request.fields['farmer_id'] = crop.farmerId.toString();
+        request.fields['category'] = crop.category;
 
         final fileStream = http.ByteStream(imageFile.openRead());
         final fileLength = await imageFile.length();
@@ -560,210 +1005,29 @@ class _CropManagementScreenState extends State<CropManagementScreen>
     }
   }
 
-  Widget _buildCropCard(Crop crop, int index) {
-    return FadeInUp(
-      duration: Duration(milliseconds: 300 + (index * 100)),
-      child: Slidable(
-        endActionPane: ActionPane(
-          motion: const ScrollMotion(),
-          children: [
-            SlidableAction(
-              onPressed: (_) => _showCropDialog(crop: crop),
-              backgroundColor: Colors.teal.shade400,
-              foregroundColor: Colors.white,
-              icon: Icons.edit,
-              label: 'Edit',
-              borderRadius: const BorderRadius.horizontal(
-                right: Radius.circular(10),
-              ),
-            ),
-            SlidableAction(
-              onPressed: (_) {
-                showDialog(
-                  context: context,
-                  builder:
-                      (context) => AlertDialog(
-                        title: const Text('Delete Crop'),
-                        content: Text(
-                          'Are you sure you want to delete ${crop.name}?',
-                        ),
-                        actions: [
-                          TextButton(
-                            child: const Text('Cancel'),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                          TextButton(
-                            child: const Text(
-                              'Delete',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _deleteCrop(crop.id!);
-                            },
-                          ),
-                        ],
-                      ),
-                );
-              },
-              backgroundColor: Colors.red.shade400,
-              foregroundColor: Colors.white,
-              icon: Icons.delete,
-              label: 'Delete',
-            ),
-          ],
-        ),
-        child: Card(
-              elevation: 2,
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => _showCropDialog(crop: crop),
-                splashColor: Colors.teal.withOpacity(0.1),
-                child: SizedBox(
-                  height: 110, // Reduced card height
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image section
-                      SizedBox(
-                        width: 90,
-                        height: 110,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            crop.imagePath != null
-                                ? Image.network(
-                                  '$_baseUrl/${crop.imagePath}',
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (context, error, stackTrace) =>
-                                          _buildPlaceholderImage(),
-                                )
-                                : _buildPlaceholderImage(),
-                            // Availability tag
-                            Positioned(
-                              top: 5,
-                              right: 5,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      crop.availability > 0
-                                          ? Colors.green.shade600
-                                          : Colors.red.shade600,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  crop.availability > 0 ? 'In Stock' : 'Out',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 8,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Content section
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(10.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                crop.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Colors.teal,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                crop.description,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[700],
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const Spacer(),
-                              Row(
-                                children: [
-                                  Text(
-                                    '\Tsh: ${currencyFormat.format(crop.price)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    'Qty: ${crop.availability}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-            .animate()
-            .fadeIn(duration: 300.ms)
-            .then()
-            .shimmer(duration: 400.ms, curve: Curves.easeInOut)
-            .scale(
-              begin: Offset(0.95, 0.95),
-              end: Offset(1, 1),
-              duration: 300.ms,
-            ),
-      ),
-    );
-  }
-
   Widget _buildPlaceholderImage() {
-    return Container(
-      color: Colors.grey[200],
-      child: Center(
-        child: Icon(Icons.eco_outlined, size: 30, color: Colors.grey[400]),
-      ),
+    return Center(
+      child: Icon(Icons.eco_outlined, size: 30, color: Colors.grey[400]),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text(
-          'Product Management',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Icon(Icons.production_quantity_limits, color: Colors.teal),
+            const SizedBox(width: 8),
+            const Text(
+              'Product Management',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        backgroundColor: Colors.white,
+        elevation: 2,
         actions: [
           IconButton(
                 icon: const Icon(Icons.refresh),
@@ -775,8 +1039,10 @@ class _CropManagementScreenState extends State<CropManagementScreen>
               .then(),
         ],
       ),
+
+      //  float Action button for add products
       floatingActionButton:
-          FloatingActionButton(
+          FloatingActionButton.extended(
             onPressed: () {
               _fabAnimationController.reset();
               _fabAnimationController.forward();
@@ -785,16 +1051,24 @@ class _CropManagementScreenState extends State<CropManagementScreen>
             backgroundColor: Colors.teal,
             foregroundColor: Colors.white,
             elevation: 4,
-            child: RotationTransition(
+            icon: RotationTransition(
               turns: Tween(begin: 0.0, end: 0.5).animate(
                 CurvedAnimation(
                   parent: _fabAnimationController,
                   curve: Curves.elasticOut,
                 ),
               ),
-              child: const Icon(Icons.add),
+              child: const Icon(Icons.inventory, color: Colors.white),
+            ),
+            label: const Text(
+              'Add Product',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ).animate().scale(duration: 300.ms, curve: Curves.elasticOut).fade(),
+      // body start here
       body:
           _isLoading
               ? Center(
@@ -806,7 +1080,7 @@ class _CropManagementScreenState extends State<CropManagementScreen>
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Loading crops...',
+                      'Loading Product...',
                       style: TextStyle(color: Colors.grey[600]),
                     ).animate().fadeIn(delay: 300.ms),
                   ],
@@ -829,13 +1103,13 @@ class _CropManagementScreenState extends State<CropManagementScreen>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No crops available',
+                        'No product available',
                         style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                       ).animate().fadeIn(delay: 200.ms),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                             icon: const Icon(Icons.add),
-                            label: const Text('Add Your First Crop'),
+                            label: const Text('Add Your First product'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.teal,
                               foregroundColor: Colors.white,
@@ -860,18 +1134,85 @@ class _CropManagementScreenState extends State<CropManagementScreen>
               : RefreshIndicator(
                 color: Colors.teal,
                 onRefresh: _fetchCrops,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: _crops.length,
-                    itemBuilder: (context, index) {
-                      final crop = _crops[index];
-                      return _buildCropCard(crop, index);
-                    },
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Search bar
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.teal.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search Product...',
+                            filled: true,
+                            fillColor: Color(0xFFE8F5E9),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Colors.teal.withOpacity(0.7),
+                            ),
+                            border: InputBorder.none,
+                            suffixIcon:
+                                _searchController.text.isNotEmpty
+                                    ? IconButton(
+                                      icon: Icon(
+                                        Icons.clear,
+                                        color: Colors.grey[500],
+                                      ),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        _filterCrops();
+                                      },
+                                    )
+                                    : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Statistics
+                      _buildStatistics(),
+                      const SizedBox(height: 16),
+                      // Filter controls
+                      _buildFilterControls(),
+                      const SizedBox(height: 16),
+                      // Results count
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Found ${_filteredCrops.length} Product',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Crop list
+                      ListView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: _filteredCrops.length,
+                        itemBuilder: (context, index) {
+                          final crop = _filteredCrops[index];
+                          return _buildCropCard(crop, index);
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),
