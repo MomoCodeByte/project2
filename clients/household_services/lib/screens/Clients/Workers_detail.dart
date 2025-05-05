@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../Componets/Login_screen.dart';
 
 class Worker {
   final int workerId;
@@ -291,6 +292,22 @@ class _WorkerDetailScreenState extends State<WorkerDetailScreen> {
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: fetchWorkers,
+          ),
+          // handle Login Button
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: IconButton(
+              onPressed: () {
+                // TODO: Handle user login/logout through API
+                // TODO: Implement login/logout logic
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
+              },
+              icon: const Icon(Icons.login, color: Colors.white),
+            ),
           ),
         ],
       ),
